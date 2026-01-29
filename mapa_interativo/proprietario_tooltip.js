@@ -3,6 +3,37 @@
 // ==========================================
 // Tooltip 360° do proprietário com TODAS as propriedades
 
+// Helper global para toggle de texto de CPF (usado nos cards de sócios)
+window.toggleCpfText = function (icon, fullCpf) {
+    const container = icon.previousElementSibling;
+    if (!container) return;
+
+    // Se for ID temporário, não faz nada ou avisa
+    if (fullCpf.startsWith('S_PJ_')) {
+        window.Toast.info('CPF completo não disponível. Consulte na DataStone.');
+        return;
+    }
+
+    const current = container.innerText;
+    // Se já tiver formatado (com pontos/traço) e contiver *, é mascarado
+
+    // Lógica simples: Se tem * está oculto. Se não tem, está visível.
+    if (current.includes('*')) {
+        // Mostrar Real
+        container.innerText = window.formatDocument(fullCpf, true);
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        // Mascarar
+        // Se quisermos mascarar manualmente: 
+        // Mas window.formatDocument(..., true) pode já retornar formatado. 
+        // Vamos forçar um mascaramento visual simples para testar.
+        container.innerText = "***." + fullCpf.substr(3, 3) + "." + fullCpf.substr(6, 3) + "-**";
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+};
+
 window.ProprietarioTooltip = {
 
     /**
@@ -61,6 +92,31 @@ window.ProprietarioTooltip = {
                 return;
             }
 
+            // 3. Buscar Sócios/Relacionamentos (Vinculados no DB)
+            const { data: rels, error: relError } = await window.supabaseApp
+                .from('proprietario_relacionamentos')
+                .select(`
+                    *,
+                    socio:proprietarios!proprietario_destino_id (
+                        id,
+                        nome_completo,
+                        cpf_cnpj,
+                        tipo,
+                        total_propriedades,
+                        dados_enrichment
+                    )
+                `)
+                .eq('proprietario_origem_id', proprietarioId);
+
+            if (!relError && rels) {
+                prop.relacionamentos = rels;
+
+                // Verificar se cada sócio tem imóveis (contagem rápida se total_propriedades não for confiável)
+                // Opcional: fazer count na tabela unidades se necessário, mas total_propriedades deve ser mantido atualizado
+            } else {
+                prop.relacionamentos = [];
+            }
+
             this.render(prop, x, y);
 
         } catch (e) {
@@ -94,6 +150,7 @@ window.ProprietarioTooltip = {
                 <div class="tooltip-tab active" onclick="window.switchTooltipTab(this, 'prop-tab-geral')" style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #764ba2; cursor: pointer; border-bottom: 3px solid #764ba2;">📋 Geral</div>
                 <div class="tooltip-tab" onclick="window.switchTooltipTab(this, 'prop-tab-imoveis')" style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer;">🏠 Imóveis (${prop.unidades.length})</div>
                 <div class="tooltip-tab" onclick="window.switchTooltipTab(this, 'prop-tab-juridico')" style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer;">📂 Jurídico</div>
+                ${prop.tipo === 'PJ' ? `<div class="tooltip-tab" onclick="window.switchTooltipTab(this, 'prop-tab-socios')" style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer;">👥 Sócios</div>` : ''}
             </div>
         `;
 
@@ -116,6 +173,13 @@ window.ProprietarioTooltip = {
         html += this.renderEmpresas(prop.dados_enrichment || {});
         html += this.renderFamilia(prop.dados_enrichment || {});
         html += '</div>';
+
+        // ABA: SÓCIOS (PJ)
+        if (prop.tipo === 'PJ') {
+            html += '<div id="prop-tab-socios" class="tab-content-pane" style="display:none;">';
+            html += this.renderSocios(prop);
+            html += '</div>';
+        }
 
         html += '</div>';
 
@@ -170,23 +234,41 @@ window.ProprietarioTooltip = {
                                    onclick="window.toggleCpfVisibility(this, '${prop.cpf_cnpj}')" title="Mostrar/Ocultar"></i>
                             </span>
                             
-                            <button onclick="window.Enrichment.enrichPerson('${prop.cpf_cnpj}')" style="
-                                background: rgba(255,255,255,0.2);
-                                border: 1px solid rgba(255,255,255,0.3);
-                                color: white;
-                                border-radius: 6px;
-                                padding: 4px 10px;
-                                cursor: pointer;
-                                font-size: 11px;
-                                font-weight: 700;
-                                display: flex;
-                                align-items: center;
-                                gap: 6px;
-                                transition: all 0.2s;
-                            " onmouseover="this.style.background='rgba(255,255,255,0.3)'" 
-                               onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                                <i class="fas fa-search-plus"></i> Consultar Dados
-                            </button>
+                            <div style="display:flex; gap: 8px;">
+                                ${prop.tipo === 'PJ' ? `
+                                <button onclick="window.ProprietarioTooltip.consultarReceita('${prop.cpf_cnpj}', ${prop.id})" style="
+                                    background: rgba(255,255,255,0.2);
+                                    border: 1px solid rgba(255,255,255,0.3);
+                                    color: white;
+                                    border-radius: 6px;
+                                    padding: 4px 10px;
+                                    cursor: pointer;
+                                    font-size: 11px;
+                                    font-weight: 700;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 6px;
+                                ">
+                                    <i class="fas fa-globe"></i> Receita Federal
+                                </button>` : ''}
+
+                                <button onclick="window.Enrichment.enrichPerson('${prop.cpf_cnpj}')" style="
+                                    background: rgba(255,255,255,0.2);
+                                    border: 1px solid rgba(255,255,255,0.3);
+                                    color: white;
+                                    border-radius: 6px;
+                                    padding: 4px 10px;
+                                    cursor: pointer;
+                                    font-size: 11px;
+                                    font-weight: 700;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 6px;
+                                " onmouseover="this.style.background='rgba(255,255,255,0.3)'" 
+                                   onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                                    <i class="fas fa-search-plus"></i> DataStone
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -442,6 +524,272 @@ window.ProprietarioTooltip = {
                 }
             });
         });
+    },
+
+    renderSocios(prop) {
+        const publicData = prop.dados_publicos || (prop.dados_enrichment ? prop.dados_enrichment.raw_public_data : null);
+        const rawSocios = publicData ? publicData.socios : [];
+        const dbRels = prop.relacionamentos || [];
+
+        if ((!rawSocios || rawSocios.length === 0) && dbRels.length === 0) {
+            return `
+                <div style="text-align: center; padding: 40px; color: #64748b;">
+                    <i class="fas fa-users" style="font-size: 32px; margin-bottom: 16px; opacity: 0.5;"></i>
+                    <p>Nenhum sócio listado.</p>
+                    <p style="font-size: 12px; margin-top: 8px;">Clique em "Consultar Receita" no topo para buscar dados atualizados.</p>
+                </div>
+            `;
+        }
+
+        let html = `<div class="section">
+            <h3 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 16px;">
+                Quadro Societário
+            </h3>
+            <div style="display: grid; gap: 12px;">`;
+
+        const mapSocios = new Map();
+
+        // 1. Adicionar do DB
+        dbRels.forEach(r => {
+            if (r.socio) {
+                mapSocios.set(r.socio.nome_completo.toUpperCase(), {
+                    origin: 'DB',
+                    name: r.socio.nome_completo,
+                    role: r.tipo_vinculo,
+                    date: r.metadata ? r.metadata.data_entrada : null,
+                    id: r.socio.id,
+                    cpf: r.socio.cpf_cnpj,
+                    properties: r.socio.total_propriedades || 0,
+                    enriched: !!r.socio.dados_enrichment
+                });
+            }
+        });
+
+        // 2. Mesclar Raw (se não existir no map)
+        if (rawSocios) {
+            rawSocios.forEach(s => {
+                const key = s.nome.toUpperCase();
+                if (!mapSocios.has(key)) {
+                    mapSocios.set(key, {
+                        origin: 'RAW',
+                        name: s.nome,
+                        role: s.qualificacao_socio ? s.qualificacao_socio.descricao : s.tipo,
+                        date: s.data_entrada,
+                        cpf: s.cpf_cnpj_socio, // Mascarado vindo da API
+                        properties: 0,
+                        id: null
+                    });
+                } else {
+                    // Atualizar info se necessário
+                    const existing = mapSocios.get(key);
+                    if (!existing.date) existing.date = s.data_entrada;
+                    // Se o DB não tem CPF completo, tenta pegar o raw (mascarado é melhor que nada)
+                }
+            });
+        }
+
+        // Renderizar Lista
+        mapSocios.forEach((s) => {
+            const entrada = s.date ? new Date(s.date).toLocaleDateString('pt-BR') : '-';
+            const isEnriched = s.origin === 'DB' && !s.cpf.startsWith('S_PJ_'); // Só é enriquecido se não for ID temporário
+            const hasProperties = s.properties > 0;
+
+            // CPF Display Logic
+            let cpfDisplay = 'CPF não informado';
+            let realCpfForToggle = s.cpf;
+            let showEye = false;
+
+            if (s.cpf) {
+                if (s.cpf.startsWith('S_PJ_')) {
+                    // É um ID temporário. Tentar achar o mascarado nos metadados
+                    // Precisamos acessar os dados_enrichment do sócio se vieram do DB
+                    // No map, não salvei dados_enrichment brutos, apenas flag enriched.
+                    // Tentar recuperar do rawSocios ou se foi setado no map
+
+                    // Fallback: Se for ID interno, mostrar "Oculto na Receita" ou mask genérica se tivermos
+                    // Na verdade, o 's.cpf' veio de r.socio.cpf_cnpj.
+                    // Vamos tentar ver se tem masked_cpf salvo
+                    // Como não tenho acesso fácil ao objeto completo aqui no loop final sem refazer o map,
+                    // Vou assumir que se for S_PJ_, mostramos "Documento Protegido" ou pegamos do raw correspondente se der match de nome
+
+                    const rawMatch = rawSocios ? rawSocios.find(rs => rs.nome.toUpperCase() === s.name.toUpperCase()) : null;
+                    if (rawMatch && rawMatch.cpf_cnpj_socio) {
+                        cpfDisplay = rawMatch.cpf_cnpj_socio; // Ex: ***123456**
+                    } else {
+                        cpfDisplay = '***.***.***-**';
+                    }
+
+                    realCpfForToggle = s.cpf; // Mantém o ID interno para controle
+                    showEye = false; // Não adianta mostrar ID interno
+                }
+                else if (s.cpf.includes('*')) {
+                    // Já mascarado (Raw original sem ID interno?)
+                    cpfDisplay = s.cpf;
+                    showEye = false;
+                }
+                else {
+                    // Full (DB Real)
+                    cpfDisplay = window.formatDocument(s.cpf, true); // Mascara padrão
+                    // Mas queremos mostrar MASCARADO por padrão?
+                    // Sim, o request do user foi "liberar ou restringir".
+                    // Então mostramos ***... e o olho libera.
+                    // Vamos mascarar visualmente agora
+                    const clean = s.cpf.replace(/\D/g, '');
+                    if (clean.length === 11) {
+                        cpfDisplay = `***.${clean.substr(3, 3)}.${clean.substr(6, 3)}-**`;
+                        showEye = true;
+                    } else {
+                        cpfDisplay = window.formatDocument(s.cpf, true);
+                    }
+                }
+            }
+
+            // Botão de Ação
+            let actionBtn = '';
+
+            // Lógica de Vínculo:
+            // Se isEnriched (Tem CPF Real), mostra "Ver Perfil" ou "Cadastrado".
+            // Se NÃO tem CPF Real (S_PJ_), mostra "Detalhar" (DataStone).
+
+            if (isEnriched) {
+                if (hasProperties) {
+                    actionBtn = `
+                        <button onclick="window.ProprietarioTooltip.show(${s.id})" style="
+                            background: white; border: 1px solid #10b981; color: #10b981; 
+                            padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;
+                            display: flex; align-items: center; gap: 6px;
+                        " title="Ver Perfil do Sócio">
+                            <i class="fas fa-user-check"></i> Ver Perfil (${s.properties})
+                        </button>
+                     `;
+                } else {
+                    actionBtn = `
+                        <button style="
+                            background: #f1f5f9; border: 1px solid #cbd5e1; color: #64748b; 
+                            padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: default;
+                            display: flex; align-items: center; gap: 6px; opacity: 0.7;
+                        " title="Cadastrado, sem imóveis">
+                            <i class="fas fa-check-circle"></i> Cadastrado
+                        </button>
+                     `;
+                }
+            } else {
+                actionBtn = `
+                    <button onclick="window.ProprietarioTooltip.consultarSocio('${s.name}', '${prop.id}')" style="
+                        background: white; border: 1px solid #3b82f6; color: #3b82f6; 
+                        padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;
+                        display: flex; align-items: center; gap: 6px;
+                    ">
+                        <i class="fas fa-search-plus"></i> Detalhar
+                    </button>
+                `;
+            }
+
+            html += `
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; transition: all 0.2s;">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <div style="font-weight: 700; color: #1e293b; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                                ${s.name}
+                                ${isEnriched ? '<i class="fas fa-certificate" style="color: #3b82f6; font-size: 12px;" title="Verificado DataStone"></i>' : ''}
+                            </div>
+                            
+                            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                                <span style="display: inline-block; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Cargo: ${s.role}</span>
+                                <span style="margin-left: 8px;">Entrada: ${entrada}</span>
+                            </div>
+
+                            <div style="font-size: 12px; color: #475569; margin-top: 6px; display: flex; align-items: center; gap: 6px;">
+                                <i class="far fa-id-card"></i> 
+                                <span class="cpf-display">${cpfDisplay}</span>
+                                ${showEye ? `
+                                    <i class="fas fa-eye" style="cursor: pointer; opacity: 0.6; font-size: 12px;" 
+                                       onclick="window.toggleCpfText(this, '${realCpfForToggle}')" title="Mostrar/Ocultar"></i>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                            ${actionBtn}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div></div>';
+        return html;
+    },
+
+    // Ação: Consultar Receita Federal
+    async consultarReceita(cnpj, proprietarioId) {
+        window.Loading.show('Consultando Receita...', 'Buscando dados públicos do CNPJ');
+        try {
+            const dados = await window.Enrichment.fetchPublicCNPJ(cnpj);
+
+            if (dados) {
+                // Salvar dados no proprietário
+                // Aqui mantemos os dados de enrichment intactos e salvamos o publico em 'dados_publicos' (se tiver coluna) ou merge em enrichment
+                // Como não criei coluna 'dados_publicos', vou salvar dentro de dados_enrichment.raw_public_data ou mergear
+
+                // Opção: Merge inteligente
+                const updatePayload = {
+                    dados_enrichment: {
+                        ...(dados), // Merge direto
+                        raw_public_data: dados,
+                        updated_at: new Date().toISOString()
+                    }
+                };
+
+                // Atualizar DB
+                await window.supabaseApp.from('proprietarios').update(updatePayload).eq('id', proprietarioId);
+
+                // Processar Sócios e Criar Vínculos
+                if (dados.socios) {
+                    const count = await window.Enrichment.processPartners(proprietarioId, dados.socios);
+                    window.Toast.success(`${count} sócios processados/vinculados.`);
+                }
+
+                window.Toast.success('Dados da Receita atualizados!');
+
+                // Refresh
+                this.show(proprietarioId);
+            }
+        } catch (e) {
+            window.Toast.error(e.message);
+        } finally {
+            window.Loading.hide();
+        }
+    },
+
+    // Ação: Consultar e Detalhar Sócio (DataStone)
+    async consultarSocio(nome, pjId) {
+        if (!confirm(`Deseja buscar detalhes de "${nome}" na DataStone?\nIsso consumirá créditos.`)) return;
+
+        window.Loading.show('DataStone', `Buscando "${nome}"...`);
+        try {
+            // Tenta buscar por nome
+            const results = await window.Enrichment.searchPersonByName(nome);
+
+            if (results && results.length > 0) {
+                // Se achou, geralmente é uma lista. Pegar o primeiro ou dar opção?
+                // MVP: Pega o primeiro
+                const personData = results[0];
+                const cpf = personData.document || personData.cpf;
+
+                // Enriquece oficialmente (salva e vincula)
+                await window.Enrichment.enrichPerson(cpf); // Essa func já faz upsert
+
+                // Refresh
+                this.show(pjId);
+            } else {
+                window.Toast.warning('Pessoa não encontrada na DataStone pelo nome.');
+            }
+        } catch (e) {
+            window.Toast.error('Erro na busca: ' + e.message);
+        } finally {
+            window.Loading.hide();
+        }
     },
 
     close() {

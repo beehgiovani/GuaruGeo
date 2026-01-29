@@ -483,7 +483,134 @@ window.Enrichment = {
         }
     },
 
-    // Inject Status UI into Sidebar (called on init)
+    // ========================================
+    // CNPJ PUBLICO & PARTNERS
+    // ========================================
+
+    // Busca dados públicos de CNPJ (Gratuito - receita)
+    async fetchPublicCNPJ(cnpj) {
+        const cleanCNPJ = cnpj.replace(/\D/g, '');
+        if (cleanCNPJ.length !== 14) throw new Error('CNPJ inválido');
+
+        // Usando proxy ou chamada direta se CORS permitir (publica.cnpj.ws tem CORS aberto geralmente)
+        // Rate limit: 3 req/min
+        const url = `https://publica.cnpj.ws/cnpj/${cleanCNPJ}`;
+
+        try {
+            const response = await fetch(url);
+
+            if (response.status === 429) {
+                throw new Error('Muitas requisições (Limite: 3/min). Aguarde um pouco.');
+            }
+            if (!response.status === 200) {
+                throw new Error(`Erro API: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data;
+
+        } catch (e) {
+            console.error('Erro fetching public CNPJ:', e);
+            throw e;
+        }
+    },
+
+    // Processa sócios retornados da API Pública
+    // Cria/Atualiza perfis para eles e cria vínculo
+    async processPartners(pjProprietarioId, socios) {
+        if (!socios || socios.length === 0) return;
+
+        let processedCount = 0;
+
+        for (const socio of socios) {
+            // Tenta identificar se o sócio já existe
+            // A API Publica retorna cpf_cnpj_socio mascarado (***123456**) ou completo?
+            // Geralmente mascarado. Mas retorna NOME.
+
+            const nomeSocio = socio.nome;
+            const papel = socio.qualificacao_socio ? socio.qualificacao_socio.descricao : 'Sócio';
+
+            // Se nome for muito curto, ignora
+            if (!nomeSocio || nomeSocio.length < 3) continue;
+
+            // 1. Tentar achar proprietário existente pelo NOME (já que CPF vem mascarado)
+            // Usar FTS ou ILIQUE na coluna nome_busca
+            let existingId = null;
+
+            const { data: existing } = await window.supabaseApp
+                .from('proprietarios')
+                .select('id, nome_completo')
+                .ilike('nome_completo', nomeSocio)
+                .limit(1);
+
+            if (existing && existing.length > 0) {
+                existingId = existing[0].id;
+                console.log(`Sócio encontrado existente: ${existingId} - ${nomeSocio}`);
+            } else {
+                // 2. Se não existe, CRIAR um "Skel" de proprietário (PF)
+                // Marcado como 'Rascunho' ou apenas com nome
+                const { data: newProp, error: createError } = await window.supabaseApp
+                    .from('proprietarios')
+                    .insert({
+                        nome_completo: nomeSocio,
+                        tipo: 'PF', // Assumimos PF, mas pode ser PJ
+                        cpf_cnpj: `S_PJ_${pjProprietarioId}_${Math.floor(Math.random() * 10000)}`, // CPF temporário único
+                        dados_enrichment: {
+                            origem: 'socio_public_api',
+                            raw_socio_data: socio,
+                            masked_cpf: socio.cpf_cnpj_socio
+                        }
+                    })
+                    .select()
+                    .single();
+
+                if (!createError && newProp) {
+                    existingId = newProp.id;
+                    console.log(`Novo perfil de sócio criado: ${existingId}`);
+                } else {
+                    console.warn("Erro criando sócio:", createError);
+                }
+            }
+
+            // 3. Criar Vínculo na tabela proprietario_relacionamentos
+            if (existingId) {
+                // Upsert no relacionamento
+                const { error: relError } = await window.supabaseApp
+                    .from('proprietario_relacionamentos')
+                    .upsert({
+                        proprietario_origem_id: pjProprietarioId,
+                        proprietario_destino_id: existingId,
+                        tipo_vinculo: papel,
+                        metadata: { data_entrada: socio.data_entrada }
+                    }, { onConflict: 'proprietario_origem_id,proprietario_destino_id,tipo_vinculo' });
+
+                if (!relError) processedCount++;
+            }
+        }
+
+        return processedCount;
+    },
+
+    // Buscar Pessoa Física via Nome (Fallback para sócios com CPF mascarado)
+    async searchPersonByName(name, state = 'SP') {
+        // Ajuste conforme API DataStone (ex: /persons?name=...)
+        // Nota: Busca por nome consome créditos e pode trazer homônimos.
+
+        const url = `${DATASTONE_API_URL}/persons?name=${encodeURIComponent(name)}&state=${state}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+        const data = await response.json();
+        // Pode retornar lista
+        if (Array.isArray(data) && data.length > 0) return data;
+        return [];
+    },
+
     initSidebarStatus() {
         // Change target to main sidebar to place it after results (at the bottom)
         const sidebarContent = document.getElementById('sidebar');
