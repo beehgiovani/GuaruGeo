@@ -1,0 +1,107 @@
+# 📘 Manual do Usuário - Guarujá GeoMap
+
+## Bem-vindo ao Guarujá GeoMap!
+
+Este guia vai ajudá-lo a utilizar todas as funcionalidades do sistema de forma rápida e eficiente.
+
+---
+
+## 1. Introdução
+
+O **Guarujá GeoMap** é um sistema web interativo de geoprocessamento desenvolvido especialmente para imobiliárias e construtoras. Com ele, você tem acesso imediato a:
+
+- 🗺️ Mapa completo de todos os lotes e unidades do Guarujá
+- 🔍 Busca rápida por endereço, proprietário, inscrição ou edifício
+- 👥 Gestão de clientes (CRM) integrada
+- 📸 Galeria de imagens dos imóveis
+- 📊 Informações cadastrais detalhadas e indicadores de mercado
+
+---
+
+## 2. Primeiros Passos
+
+### Acessando o Sistema
+
+1. Abra seu navegador (Chrome, Firefox, Edge ou Safari)
+2. Digite o endereço fornecido pela sua imobiliária
+3. **Login default**: Usuário `admin` / Senha `admin123`
+
+---
+
+## 3. Navegação e Visualização no Mapa
+
+### 📍 Navegação Hierárquica (Mergulho no Mapa)
+O mapa funciona com um sistema de zoom progressivo em 3 níveis:
+- **Nível 1 (Zonas):** Visão geral da cidade separada por zonas fiscais.
+- **Nível 2 (Setores):** Ao clicar em uma zona, você vê os setores cadastrais.
+- **Nível 3 (Lotes):** Ao clicar em um setor, você vê os lotes e edifícios individuais.
+
+> 💡 **Dica**: Use o botão **"⬅ Voltar"** no canto superior esquerdo para subir de nível e explorar os arredores.
+
+### 🎨 Modos de Visualização (Zonas vs Bairros)
+No canto superior direito, você pode alternar entre:
+- **Modo Zonas:** Colore o mapa conforme as zonas fiscais (Padrão).
+- **Modo Bairros:** Colore o mapa por nomes comerciais (ex: Astúrias, Pitangueiras). Etiquetas flutuantes ajudam na identificação rápida de regiões.
+
+---
+
+## 🔍 4. Sistema de Busca Inteligente
+
+A busca é multicasco e aceita diversos formatos:
+
+- **🔢 Inscrição:** Digite 8 dígitos para o lote ou 11 para a unidade.
+- **🏠 Endereço:** Digite o nome da rua ou bairro.
+- **🏢 Edifício:** Digite o nome do condomínio.
+- **👤 Proprietário:** Digite o nome completo ou apenas o **CPF/CNPJ**.
+
+> ⚡ **Dica de Busca**: O sistema trata acentos automaticamente e aceita nomes parciais. Se buscar por "Abel Joaquim", ele encontrará mesmo que o nome completo seja mais longo.
+
+---
+
+## 👤 5. Perfil 360° do Proprietário
+
+Ao clicar em um proprietário (seja nos resultados da busca ou pelo botão "Ver Perfil" na unidade), você abre uma visão completa:
+
+- **Portfólio Imobiliário:** Veja todos os imóveis registrados para aquele CPF/CNPJ no Guarujá.
+- **Navegação Direta:** Clique em qualquer imóvel da lista e o mapa fará o "voo" (zoom progressivo) direto para o local.
+- **Consulta de Dados (DataStone):** Clique em **"Consultar Dados"** para buscar telefones e e-mails originais da RFB/DataStone.
+- **Sync Automático:** Assim que você consulta um dono, os novos contatos aparecem em todas as suas unidades automaticamente.
+
+---
+
+## 📊 6. Analytics e Exportação
+
+### Painel de Indicadores
+Clique no ícone de gráfico (**📊**) no menu superior para ver:
+- **Top Imóveis:** Quais lotes estão sendo mais visualizados pela equipe.
+- **Donos em Foco:** Quais proprietários estão sendo mais pesquisados.
+- **Zonas de Calor:** Regiões com maior atividade de busca.
+
+### Exportação de Dados
+No painel de busca, você encontrará o botão **"Exportar CSV/Excel"**. Ele permite baixar:
+- Lista de resultados da busca atual.
+- Dados de proprietários e contatos para planilhas externas.
+
+---
+
+## 👥 7. Sistema CRM
+
+O CRM permite gerenciar seus leads e fazer o "matching" com imóveis:
+
+1. Clique no botão **👥**.
+2. Cadastre o Lead (Nome, WhatsApp, Orçamento).
+3. Use o botão **"🔍 Buscar Compatíveis"** para o sistema sugerir unidades que atendem ao perfil do cliente.
+
+---
+
+## 10. Problemas Comuns
+
+- **Tela Escurecida:** Se o mapa travar escuro após uma consulta, basta dar zoom ou fechar a ficha do proprietário. (Corrigido na V2.0).
+- **Busca Lenta:** O sistema usa cache. Se sentir lentidão, use o F5 para atualizar os dados.
+
+---
+
+## 🎉 Conclusão
+O Guarujá GeoMap é sua ferramenta definitva para prospecção imobiliária. 
+
+**Bom trabalho e boas vendas!** 🚀

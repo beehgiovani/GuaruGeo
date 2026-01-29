@@ -1,0 +1,188 @@
+/* ============================================================
+   GUARUGEO - MOBILE UI (MODULAR)
+   ============================================================ */
+
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 100vw;
+    }
+
+    #app-container {
+        flex-direction: column;
+    }
+
+    /* Sidebar as a Functional Bottom Sheet */
+    #sidebar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 70vh;
+        z-index: 2000;
+        border-radius: 24px 24px 0 0;
+        transform: translateY(calc(100% - 60px));
+        /* Peek only 60px */
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: #fff;
+        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    #sidebar.active {
+        transform: translateY(0);
+    }
+
+    /* Drag handle indicator */
+    #sidebar::after {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 4px;
+        background: #e2e8f0;
+        border-radius: 2px;
+    }
+
+    .sidebar-logo-container {
+        padding: 15px 15px 5px;
+        text-align: left;
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .sidebar-logo-container img {
+        max-height: 40px;
+    }
+
+    .sidebar-header {
+        padding: 5px 15px 15px;
+    }
+
+    .header-top-row h2 {
+        font-size: 18px;
+    }
+
+    .header-actions {
+        gap: 8px;
+    }
+
+    /* Unified Panel on Mobile: Smaller and Discrete */
+    #statsPanel {
+        left: 10px !important;
+        bottom: 80px !important;
+        /* Above bottom sheet handle */
+        width: 220px;
+    }
+
+    #statsPanel.collapsed {
+        width: 44px !important;
+        height: 44px !important;
+        padding: 0 !important;
+        bottom: 80px !important;
+    }
+
+    /* --- Tooltip Scaling for Mobile --- */
+    .header-buttons-wrapper {
+        width: 100%;
+        justify-content: flex-start !important;
+        margin-top: 10px;
+    }
+
+    .tooltip-action-btn .btn-text {
+        display: none;
+        /* Hide text, keep icons on mobile */
+    }
+
+    .tooltip-action-btn {
+        padding: 8px !important;
+        min-width: 40px;
+        justify-content: center;
+    }
+
+    .lot-tooltip-header {
+        padding: 12px 15px !important;
+    }
+
+    /* --- Z-Index Layering Reset --- */
+    .sidebar-backdrop {
+        z-index: 9998 !important;
+    }
+
+    #sidebar {
+        z-index: 9991 !important;
+    }
+
+    .lot-tooltip {
+        z-index: 10000 !important;
+    }
+
+    .image-modal {
+        z-index: 10001 !important;
+    }
+
+    .chat-panel {
+        z-index: 10002 !important;
+    }
+
+    .toast-container {
+        z-index: 10005 !important;
+    }
+
+    .stat-item {
+        padding-bottom: 5px !important;
+    }
+
+    .stat-item div:first-child {
+        font-size: 8px !important;
+    }
+
+    .stat-item div:last-child {
+        font-size: 13px !important;
+    }
+
+    .legend-item {
+        padding: 2px 4px !important;
+        gap: 5px !important;
+    }
+
+    .legend-label {
+        font-size: 9px !important;
+    }
+
+    /* Force hide hidden elements to prevent bleeding */
+    .hidden,
+    [style*="display: none"] {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
+    /* Modals must be on top of everything */
+    .custom-modal-overlay {
+        z-index: 3000 !important;
+    }
+
+    /* Map UI adjustments */
+    .gps-location-btn {
+        bottom: 80px;
+        right: 15px;
+    }
+
+    /* Side Filter grid on mobile */
+    .filter-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .filter-chip {
+        padding: 10px 8px;
+        font-size: 10px;
+    }
+
+    /* Backdrop fix */
+    .sidebar-backdrop {
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(2px);
+    }
+}

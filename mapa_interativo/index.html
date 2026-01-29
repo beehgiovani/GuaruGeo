@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guarugeo - Inteligência Imobiliária</title>
+
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Leaflet Draw CSS & JS (UNPKG) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
+    <!-- Turf.js (Geospatial Analysis) -->
+    <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+
+    <style>
+        .leaflet-draw {
+            margin-top: 15px !important;
+            display: block !important;
+            z-index: 1000 !important;
+        }
+
+        .leaflet-draw-toolbar a {
+            background-color: white !important;
+            border-color: #ccc !important;
+            color: #333 !important;
+        }
+    </style>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Custom Module CSS (Restored & Modular) -->
+    <link rel="stylesheet" href="layout.css">
+    <link rel="stylesheet" href="sidebar_styles.css">
+    <link rel="stylesheet" href="map_styles.css">
+    <link rel="stylesheet" href="overlays_styles.css">
+    <link rel="stylesheet" href="neighborhood_styles.css">
+    <link rel="stylesheet" href="editor_styles.css">
+    <link rel="stylesheet" href="premium_styles.css">
+    <link rel="stylesheet" href="analytics_styles.css">
+    <link rel="stylesheet" href="carousel_styles.css">
+    <link rel="stylesheet" href="modal_styles.css">
+    <link rel="stylesheet" href="toast_styles.css">
+    <link rel="stylesheet" href="crm_styles.css">
+    <link rel="stylesheet" href="ai_chat_styles.css">
+    <link rel="stylesheet" href="mobile_styles.css">
+</head>
+
+<body>
+    <!-- Login Overlay -->
+    <div id="loginOverlay">
+        <div class="login-box">
+            <img src="logo.png" alt="Omega Imóveis" style="max-width: 150px; margin-bottom: 10px;">
+            <h2>Acesso Restrito</h2>
+            <p>Guarugeo Admin</p>
+            <input type="text" id="loginUser" placeholder="Usuário" autocomplete="off">
+            <input type="password" id="loginPass" placeholder="Senha">
+            <button id="btnLogin">Entrar</button>
+            <p id="loginError" style="color: #ff4444; display: none; margin-top: 10px;">Credenciais Inválidas</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">Carregando Dados...</div>
+            <div class="loading-subtext">Processando lotes e geometrias</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal (Windowed Lightbox) -->
+    <div id="image-modal" class="image-modal" onclick="closeImageModal()">
+        <div class="modal-window-frame" onclick="event.stopPropagation()">
+            <div class="modal-header-bar">
+                <span class="close-modal-btn" onclick="closeImageModal()" title="Fechar">&times;</span>
+            </div>
+            <img class="modal-content" id="modal-image">
+        </div>
+    </div>
+
+    <!-- Context Menu (Right Click) -->
+    <div id="context-menu" class="context-menu">
+        <div class="context-menu-item" id="ctx-create-lote" onclick="window.handleContextAction('create')">📍 Criar Novo
+            Edifício/Lote</div>
+        <div class="context-menu-item" id="ctx-add-unit" onclick="window.handleContextAction('add-unit')">➕ Adicionar
+            Unidade
+        </div>
+        <div class="context-menu-item" id="ctx-move-lote" onclick="window.handleContextAction('move')">✥ Mover
+            Localização
+        </div>
+        <div class="context-menu-item" id="ctx-edit-details" onclick="window.handleContextAction('edit')">✏️ Editar
+            Detalhes
+        </div>
+        <div class="context-menu-item" id="ctx-delete-lote" onclick="window.handleContextAction('delete')"
+            style="color: #e53935;">🗑️ Excluir Lote</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" id="ctx-add-lead" onclick="window.openAddLeadTooltip()" style="color: #4CAF50;">
+            👤 Adicionar Cliente CRM</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" onclick="window.hideContextMenu()">Cancelar</div>
+    </div>
+
+    <!-- Sidebar Toggle Button (Mobile) -->
+    <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle Menu">
+        <div class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </button>
+
+    <!-- Sidebar Backdrop (Mobile) -->
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+    <!-- Main App (Initially Hidden via CSS if desired, or covered by Overlay) -->
+    <div id="app-container">
+        <!-- Sidebar -->
+        <aside id="sidebar">
+            <div class="sidebar-logo-container">
+                <img src="logo.png" alt="Omega Imóveis">
+            </div>
+            <div class="sidebar-header">
+                <div class="header-top-row">
+                    <h2>Guarugeo</h2>
+                    <div class="header-actions">
+                        <button class="crm-leads-btn" onclick="window.showLeadsPanel()" title="Ver Lista de Clientes">
+                            <i class="fas fa-users"></i>
+                            <span class="leads-count" id="leadsCount">0</span>
+                        </button>
+                        <button class="analytics-btn" onclick="window.AnalyticsDashboard.show()"
+                            title="Painel de Resultados"
+                            style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #667eea;">
+                            <i class="fas fa-chart-line"></i>
+                        </button>
+                        <button id="btnFarolInsights" onclick="window.showFarolInsights()"
+                            title="Dicas do Farol (Oportunidades)"
+                            style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: #f59e0b;">
+                            <i class="fas fa-lightbulb"></i>
+                        </button>
+                        <button onclick="window.logout()"
+                            style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #666;"
+                            title="Sair / Logout">🚪</button>
+                    </div>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Buscar Inscrição, Bairro..." autocomplete="off">
+                    <button id="searchClearBtn" class="search-clear-btn">×</button>
+                    <button id="searchBtn">🔍</button>
+                </div>
+            </div>
+
+            <!-- Sidebar Navigation Tabs -->
+            <div class="sidebar-tabs">
+                <button class="tab-btn active" onclick="window.switchSidebarTab('map')">🗺️ Mapa</button>
+
+            </div>
+
+            <!-- TAB: MAP CONTENT (Wrapped existing content) -->
+            <div id="tab-map" class="sidebar-tab-content active">
+
+                <!-- Filter Section -->
+                <div class="filter-section">
+                    <div class="filter-title">Tipo de Busca</div>
+                    <div class="filter-grid">
+                        <div class="filter-chip active" data-search-type="all"
+                            data-tooltip="Busca completa em toda a base de dados (Ruas, Lotes, Proprietários)">Todos
+                        </div>
+                        <div class="filter-chip" data-search-type="street"
+                            data-tooltip="Pesquisa apenas por nomes de Ruas e Logradouros">Rua</div>
+                        <div class="filter-chip" data-search-type="building"
+                            data-tooltip="Pesquisa por nomes de Condomínios e Edifícios">Edifício</div>
+                        <div class="filter-chip" data-search-type="owner"
+                            data-tooltip="Pesquisa na base unificada de Proprietários (CPF/CNPJ/Nome)">Proprietários
+                        </div>
+                        <div class="filter-chip" data-search-type="property"
+                            data-tooltip="Pesquisa na base do Cadastro Imobiliário">Imóveis</div>
+                    </div>
+                </div>
+
+                <div id="searchResults" class="search-results hidden" style="margin-top: -15px;">
+                    <!-- Search items injected here -->
+                </div>
+            </div>
+
+            <div id="editorPanel" class="editor-panel hidden">
+                <div class="panel-header">
+                    <h3>Editar Lote</h3>
+                    <button id="closeEditor">×</button>
+                </div>
+                <div id="formContainer">
+                    <!-- Form injected by JS -->
+                </div>
+                <div class="form-actions">
+                    <button id="saveBtn" class="btn primary">Salvar Alterações</button>
+                    <button id="exportBtn" class="btn secondary">Baixar Arquivo</button>
+                </div>
+            </div>
+
+            <!-- Zone Legend -->
+
+
+
+
+            <!-- Stats Panel moved to map -->
+        </aside>
+
+        <!-- Map -->
+        <main id="map" style="position: relative;">
+            <button id="mapBackBtn" class="map-back-btn hidden">⬅ Voltar</button>
+
+            <!-- Unified Dashboard Panel (Floating Bottom Left) -->
+            <div id="statsPanel" class="stats-panel collapsed">
+                <button class="stats-toggle-btn" onclick="this.parentElement.classList.toggle('collapsed')">
+                    <i class="fas fa-chart-pie"></i>
+                </button>
+                <div class="stats-collapsible-content">
+                    <div class="stat-item">
+                        <div class="stat-label">LOTES VISÍVEIS</div>
+                        <div id="totalLotes" class="stat-value">50.052 Lotes (Cache)</div>
+                    </div>
+
+                    <!-- Integrated Zone Legend -->
+                    <div id="zoneLegendContainer" class="zone-legend"></div>
+
+                    <div class="dashboard-actions">
+                        <!-- Neighborhood Toggle Button -->
+                        <button id="btnToggleNeighborhoods" class="dashboard-btn primary"
+                            onclick="window.toggleNeighborhoods(this)">
+                            <i class="fas fa-map"></i> Bairros
+                        </button>
+                        <!-- Edit Button -->
+                        <button id="btnEditNeighborhoods" class="dashboard-btn secondary" style="display:none;"
+                            onclick="window.toggleNeighborhoodEditMode(this)">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODALS (Hidden by default) -->
+    <!-- ========================================== -->
+
+    <!-- 1. CRM: Add Lead Modal -->
+    <div id="modal-lead-form-overlay" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <div class="custom-modal-header">
+                <div class="custom-modal-title">
+                    <span>� Novo Cliente Interessado</span>
+                </div>
+                <button class="custom-modal-close" onclick="closeModal('modal-lead-form-overlay')">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <div class="form-group">
+                    <label class="form-label">Nome do Cliente</label>
+                    <input type="text" id="lead-name" class="form-input" placeholder="Ex: Ana Silva">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">WhatsApp (Celular)</label>
+                        <input type="text" id="lead-contact" class="form-input" placeholder="(11) 99999-9999">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">Interesse</label>
+                        <select id="lead-status" class="form-select">
+                            <option value="Quente">🔥 Muito Interessado</option>
+                            <option value="Morno" selected>🌊 Olhando</option>
+                            <option value="Frio">❄️ Apenas Curioso</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Preço Máximo (R$)</label>
+                    <input type="number" id="lead-budget" class="form-input" placeholder="Ex: 500.000">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">Mín. Quartos</label>
+                        <input type="number" id="lead-rooms" class="form-input" value="2">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">Bairros de Interesse</label>
+                        <input type="text" id="lead-neighborhoods" class="form-input"
+                            placeholder="Ex: Pitangueiras, Centro">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn-ghost" onclick="closeModal('modal-lead-form-overlay')">Cancelar</button>
+                    <button class="btn-primary-rich" onclick="submitLeadForm()">Salvar Cliente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. MAP: New Lot Modal -->
+    <div id="modal-lot-form-overlay" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <div class="custom-modal-header">
+                <div class="custom-modal-title">
+                    <span>🏗️ Novo Lote/Empreendimento</span>
+                </div>
+                <button class="custom-modal-close" onclick="closeModal('modal-lot-form-overlay')">&times;</button>
+            </div>
+            <div class="custom-modal-body">
+                <div class="form-group">
+                    <label class="form-label">Inscrição (8 dígitos)</label>
+                    <input type="text" id="new-lot-inscricao" class="form-input" placeholder="Ex: 00001001"
+                        maxlength="8">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Endereço / Localização</label>
+                    <input type="text" id="new-lot-address" class="form-input" placeholder="Rua, Número, Bairro">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">Quadra</label>
+                        <input type="text" id="new-lot-quadra" class="form-input">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">Lote</label>
+                        <input type="text" id="new-lot-lote-geo" class="form-input">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn-ghost" onclick="closeModal('modal-lot-form-overlay')">Cancelar</button>
+                    <button class="btn-primary-rich" onclick="submitNewLot()">Criar Lote</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- RBush (Spatial Index) - Local -->
+    <script src="rbush.min.js"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBc__Bpbbq_s11JcE3FFaMcipyR64U97YM",
+            authDomain: "mapaguaruja-eb395.firebaseapp.com",
+            projectId: "mapaguaruja-eb395",
+            storageBucket: "mapaguaruja-eb395.firebasestorage.app",
+            messagingSenderId: "315682403818",
+            appId: "1:315682403818:web:7fb8818caad3e1429dae93",
+            measurementId: "G-3S4MJGZBYP"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+
+        // Make available globally
+        window.firebaseApp = app;
+        window.firebaseAnalytics = analytics;
+    </script>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+
+    <!-- App Logic -->
+    <script src="utils.js"></script>
+    <script src="search_handler.js"></script>
+    <script src="tooltip_handler.js"></script>
+    <script src="neighborhood_handler.js"></script>
+    <script src="map_handler.js"></script>
+    <script src="editor_handler.js"></script>
+    <script src="enrichment_handler.js"></script>
+    <script src="crm_handler.js"></script>
+    <script src="insights_handler.js"></script>
+    <script src="app.js"></script>
+
+    <!-- New Modules (Analytics & Owners) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="analytics_tracker.js"></script>
+    <script src="analytics_dashboard.js"></script>
+    <script src="proprietario_tooltip.js"></script>
+    <script src="gemini_chat_handler.js"></script>
+    <script src="ai_history_handler.js"></script>
+    <script src="marketing_handler.js"></script>
+</body>
+
+</html>

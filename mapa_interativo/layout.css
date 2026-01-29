@@ -1,0 +1,252 @@
+/* ============================================================
+   GUARUGEO - LAYOUT & CORE (MODULAR)
+   ============================================================ */
+
+:root {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --secondary-color: #64748b;
+    --accent-color: #0ea5e9;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --bg-main: #f8fafc;
+    --bg-white: #ffffff;
+    --sidebar-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --shadow-main: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --sidebar-width: 400px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', 'Inter', sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+#app-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* ============================================================
+   ADAPTIVE CURSORS & INTERACTIVE ELEMENTS
+   ============================================================ */
+
+/* Global Clickables */
+button,
+.tab-btn,
+.filter-chip,
+.search-item,
+.context-menu-item,
+.legend-item,
+.custom-modal-close,
+[onclick] {
+    cursor: pointer !important;
+}
+
+/* Map Cursors */
+.leaflet-container {
+    cursor: grab !important;
+}
+
+.leaflet-dragging .leaflet-container {
+    cursor: grabbing !important;
+}
+
+/* Interactive Leaflet Elements */
+.leaflet-interactive {
+    cursor: pointer !important;
+}
+
+/* Form Controls */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+textarea {
+    cursor: text;
+}
+
+.hidden {
+    display: none !important;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* ============================================================
+   UNIFIED DASHBOARD (PREMIUM & COLLAPSIBLE)
+   ============================================================ */
+.stats-panel {
+    position: absolute;
+    bottom: 25px;
+    left: 25px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+    width: 240px;
+    z-index: 1000;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    padding: 20px;
+}
+
+.stats-panel.collapsed {
+    width: 50px !important;
+    height: 50px !important;
+    padding: 0 !important;
+    border-radius: 25px !important;
+    bottom: 25px;
+    left: 25px;
+}
+
+.stats-toggle-btn {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50px;
+    height: 50px;
+    border: none;
+    background: none;
+    color: var(--primary-color);
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+    transition: transform 0.3s ease;
+}
+
+.stats-panel.collapsed .stats-toggle-btn {
+    width: 100%;
+    height: 100%;
+}
+
+.stats-panel:not(.collapsed) .stats-toggle-btn {
+    top: 10px;
+    left: auto;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #64748b;
+}
+
+.stats-collapsible-content {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.stats-panel.collapsed .stats-collapsible-content {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+}
+
+.stat-item {
+    margin-bottom: 20px;
+}
+
+.stat-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: #94a3b8;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: 900;
+    color: #1e293b;
+}
+
+.zone-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.dashboard-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.dashboard-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dashboard-btn.primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.dashboard-btn.secondary {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.dashboard-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+/* Scrollbar Style for legend */
+.zone-legend::-webkit-scrollbar {
+    width: 4px;
+}
+
+.zone-legend::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+}
