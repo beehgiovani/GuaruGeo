@@ -1,0 +1,20 @@
+{
+    "name": "guaruja-email-monitor",
+    "version": "1.0.0",
+    "description": "Background service to monitor emails for legal certificates",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "node --watch index.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@supabase/supabase-js": "^2.39.0",
+        "dotenv": "^16.3.1",
+        "imap-simple": "^5.1.0",
+        "mailparser": "^3.6.5",
+        "nodemailer": "^6.9.7"
+    }
+}
