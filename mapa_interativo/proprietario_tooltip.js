@@ -146,10 +146,11 @@ window.ProprietarioTooltip = {
 
         // TABS
         html += `
-            <div class="tooltip-tabs" style="padding: 0 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px;">
+            <div class="tooltip-tabs" style="padding: 0 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px; flex-wrap: wrap;">
                 <div class="tooltip-tab active" onclick="window.switchTooltipTab(this, 'prop-tab-geral')" style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #764ba2; cursor: pointer; border-bottom: 3px solid #764ba2;">📋 Geral</div>
                 <div class="tooltip-tab" onclick="window.switchTooltipTab(this, 'prop-tab-imoveis')" style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer;">🏠 Imóveis (${prop.unidades.length})</div>
                 <div class="tooltip-tab" onclick="window.switchTooltipTab(this, 'prop-tab-juridico')" style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer;">📂 Jurídico</div>
+                <div class="tooltip-tab" onclick="window.switchTooltipTab(this, 'prop-tab-outras')" style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer;">ℹ️ Outras Info</div>
                 ${prop.tipo === 'PJ' ? `<div class="tooltip-tab" onclick="window.switchTooltipTab(this, 'prop-tab-socios')" style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer;">👥 Sócios</div>` : ''}
             </div>
         `;
@@ -168,8 +169,14 @@ window.ProprietarioTooltip = {
         html += this.renderPropriedades(prop.unidades || []);
         html += '</div>';
 
-        // ABA: JURÍDICO
+        // ABA: JURÍDICO (Apenas Certidões)
         html += '<div id="prop-tab-juridico" class="tab-content-pane" style="display:none;">';
+        html += this.renderCertidoes(prop);
+        html += this.renderCertidoesHistorico(prop);
+        html += '</div>';
+
+        // ABA: OUTRAS INFORMAÇÕES (Empresas + Família)
+        html += '<div id="prop-tab-outras" class="tab-content-pane" style="display:none;">';
         html += this.renderEmpresas(prop.dados_enrichment || {});
         html += this.renderFamilia(prop.dados_enrichment || {});
         html += '</div>';
@@ -494,6 +501,190 @@ window.ProprietarioTooltip = {
         return html;
     },
 
+    // ========================================
+    // INFOSIMPLES - CONSULTAS JURÍDICAS
+    // ========================================
+
+    renderCertidoes(prop) {
+        // Usar o handler Infosimples para renderizar o seletor
+        if (window.Infosimples && window.Infosimples.renderSeletorCertidoes) {
+            return window.Infosimples.renderSeletorCertidoes(prop);
+        }
+
+        return `
+            <div style="padding: 20px; text-align: center; color: #64748b;">
+                <i class="fas fa-exclamation-circle" style="font-size: 24px; margin-bottom: 12px;"></i>
+                <p>Módulo Infosimples não carregado.</p>
+            </div>
+        `;
+    },
+
+    renderCertidoesHistorico(prop) {
+        const documento = prop.cpf_cnpj?.replace(/\D/g, '') || '';
+        const propId = prop.id;
+
+        // Auto-load após o DOM ser atualizado
+        setTimeout(() => this.loadCertidoesHistorico(propId, documento), 300);
+
+        return `
+            <div class="section" style="margin-top: 24px; margin-bottom: 24px;">
+                <h3 style="
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: #1e293b;
+                    margin-bottom: 16px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    border-bottom: 2px solid #e2e8f0;
+                    padding-bottom: 8px;
+                ">
+                    <i class="fas fa-history" style="color: #667eea;"></i>
+                    Certidões Salvas
+                </h3>
+                <div id="certidoes-historico-${prop.id}" style="display: grid; gap: 8px;">
+                    <div style="text-align: center; padding: 20px; color: #94a3b8;">
+                        <i class="fas fa-spinner fa-spin"></i> Carregando...
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+
+    async loadCertidoesHistorico(proprietarioId, documento) {
+        const container = document.getElementById(`certidoes-historico-${proprietarioId}`);
+        if (!container) return;
+
+        try {
+            // Buscar arquivos salvos no bucket certidoes_juridicas
+            const { data: files, error } = await window.supabaseApp
+                .storage
+                .from('certidoes_juridicas')
+                .list(`${documento}/`, { limit: 50, sortBy: { column: 'created_at', order: 'desc' } });
+
+            if (error) {
+                console.warn('Erro ao carregar certidões:', error);
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
+                        <i class="fas fa-folder-open" style="font-size: 24px; margin-bottom: 8px;"></i>
+                        <p>Nenhuma certidão salva ainda.</p>
+                        <p style="font-size: 11px; opacity: 0.8;">Solicite certidões acima para salvá-las aqui.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            if (!files || files.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
+                        <i class="fas fa-folder-open" style="font-size: 24px; margin-bottom: 8px;"></i>
+                        <p>Nenhuma certidão salva ainda.</p>
+                        <p style="font-size: 11px; opacity: 0.8;">Solicite certidões acima para salvá-las aqui.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Renderizar lista de arquivos
+            let html = '';
+            files.forEach(file => {
+                if (file.name === '.emptyFolderPlaceholder') return;
+
+                // Extrair nome da certidão do arquivo
+                // Formato: TIPO_DATA_HORA.pdf
+                const parts = file.name.replace('.pdf', '').split('_');
+                const tipoId = parts[0] || 'unknown';
+                const dataStr = parts.length > 1 ? parts.slice(1).join('_') : '';
+
+                // Buscar config da certidão
+                const certConfig = window.Infosimples?.getCertidoesConfig()[tipoId] || {
+                    nome: tipoId.replace(/-/g, ' ').toUpperCase(),
+                    icone: 'fa-file-pdf',
+                    cor: '#64748b'
+                };
+
+                // Gerar URL pública
+                const { data: urlData } = window.supabaseApp
+                    .storage
+                    .from('certidoes_juridicas')
+                    .getPublicUrl(`${documento}/${file.name}`);
+
+                const publicUrl = urlData?.publicUrl || '#';
+
+                // Formatar data
+                let dataFormatada = '';
+                if (file.created_at) {
+                    dataFormatada = new Date(file.created_at).toLocaleDateString('pt-BR', {
+                        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    });
+                }
+
+                const isHtml = file.name.toLowerCase().endsWith('.html') || file.metadata?.mimetype === 'text/html';
+                const clickAction = `window.Infosimples.verComprovante('${publicUrl}', ${isHtml})`;
+
+                html += `
+                    <div style="    
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        padding: 12px;
+                        background: white;
+                        border: 1px solid #e2e8f0;
+                        border-left: 4px solid ${certConfig.cor || '#667eea'};
+                        border-radius: 8px;
+                    ">
+                        <i class="fas ${certConfig.icone || 'fa-file-pdf'}" style="
+                            font-size: 20px;
+                            color: ${certConfig.cor || '#667eea'};
+                            width: 28px;
+                            text-align: center;
+                        "></i>
+                        <div style="flex: 1;">
+                            <div style="font-size: 13px; font-weight: 600; color: #1e293b;">
+                                ${certConfig.nome || file.name}
+                            </div>
+                            <div style="font-size: 11px; color: #64748b;">
+                                ${dataFormatada || 'Data não disponível'}
+                            </div>
+                        </div>
+                        <button onclick="${clickAction}" style="
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white;
+                            padding: 8px 14px;
+                            border: none;
+                            border-radius: 6px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            text-decoration: none;
+                            display: flex;
+                            align-items: center;
+                            gap: 6px;
+                            cursor: pointer;
+                        ">
+                            <i class="fas ${isHtml ? 'fa-eye' : 'fa-download'}"></i> ${isHtml ? 'Abrir' : 'Baixar'}
+                        </button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html || `
+                <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
+                    <i class="fas fa-folder-open" style="font-size: 24px; margin-bottom: 8px;"></i>
+                    <p>Nenhuma certidão salva.</p>
+                </div>
+            `;
+
+        } catch (e) {
+            console.error('Erro ao carregar histórico de certidões:', e);
+            container.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #ef4444;">
+                    <i class="fas fa-exclamation-circle"></i> Erro ao carregar
+                </div>
+            `;
+        }
+    },
+
     renderDadosAdicionais(prop) {
         let html = `<div class="section" style="background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px dashed #cbd5e1;">
             <h4 style="font-size: 13px; font-weight: 700; color: #64748b; margin-bottom: 12px; text-transform: uppercase;">ℹ️ Dados Adicionais</h4>
@@ -506,9 +697,10 @@ window.ProprietarioTooltip = {
         if (prop.situacao_cadastral) html += `<div><strong>Situação:</strong> ${prop.situacao_cadastral}</div>`;
         if (prop.data_enriquecimento) html += `<div><strong>Última consulta:</strong> ${new Date(prop.data_enriquecimento).toLocaleDateString('pt-BR')}</div>`;
 
-        html += '</div></div>';
+        html += '</div></div > ';
         return html;
     },
+
 
     setupHandlers(tooltip, prop) {
         // Click nas propriedades para navegar

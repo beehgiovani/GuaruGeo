@@ -91,6 +91,27 @@
         </div>
     </div>
 
+    <!-- HTML Certificate Viewer (New) -->
+    <div id="html-cert-modal" class="image-modal" style="display: none; z-index: 10001;">
+        <div
+            style="background: white; width: 23cm; height: 90vh; margin: 2vh auto; position: relative; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.5);">
+            <div
+                style="padding: 10px; background: #333; color: white; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: bold;">Visualização de Certidão</span>
+                <div>
+                    <button onclick="window.printCertFrame()"
+                        style="padding: 5px 10px; cursor: pointer; border: none; background: #2563eb; color: white; border-radius: 4px; margin-right: 10px;">🖨️
+                        Imprimir</button>
+                    <button onclick="document.getElementById('html-cert-modal').style.display='none'"
+                        style="padding: 5px 10px; cursor: pointer; border: none; background: #dc2626; color: white; border-radius: 4px;">❌
+                        Fechar</button>
+                </div>
+            </div>
+            <iframe id="cert-frame"
+                style="flex: 1; border: none; width: 100%; height: 100%; background: white;"></iframe>
+        </div>
+    </div>
+
     <!-- Context Menu (Right Click) -->
     <div id="context-menu" class="context-menu">
         <div class="context-menu-item" id="ctx-create-lote" onclick="window.handleContextAction('create')">📍 Criar Novo
@@ -405,9 +426,11 @@
     <script src="analytics_tracker.js"></script>
     <script src="analytics_dashboard.js"></script>
     <script src="proprietario_tooltip.js"></script>
+    <script src="infosimples_handler.js"></script>
     <script src="gemini_chat_handler.js"></script>
     <script src="ai_history_handler.js"></script>
     <script src="marketing_handler.js"></script>
+    <script src="notifications_handler.js"></script>
 </body>
 
 </html>

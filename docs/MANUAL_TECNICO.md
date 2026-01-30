@@ -38,8 +38,11 @@ graph TB
     JS --> Storage
     JS --> EdgeFn
     EdgeFn --> DS
+    EdgeFn --> IS[Infosimples API]
     JS --> GM
     JS --> FA
+    Mon[Email Monitor Service] --> PG
+    Mon --> Storage
 ```
 
 ### Fluxo de Dados
@@ -47,7 +50,7 @@ graph TB
 1. **Carregamento Inicial**:
    ```
    Browser → index.html → Scripts JS → Supabase (fetch lotes) → Renderização no Mapa
-   ```
+   ```f
 
 2. **Busca**:
    ```
@@ -312,15 +315,29 @@ CREATE TRIGGER update_leads_updated_at BEFORE UPDATE ON crm_leads
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
--- ROW LEVEL SECURITY (Opcional para Produção)
+-- TABELA: notificacoes
 -- ============================================
--- ALTER TABLE lotes ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE unidades ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE crm_leads ENABLE ROW LEVEL SECURITY;
+CREATE TABLE IF NOT EXISTS notificacoes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    titulo TEXT NOT NULL,
+    mensagem TEXT,
+    link_url TEXT,
+    tipo TEXT DEFAULT 'certidao',
+    lida BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
--- Política: Leitura pública, escrita autenticada
--- CREATE POLICY "Public read lotes" ON lotes FOR SELECT USING (true);
--- CREATE POLICY "Authenticated write lotes" ON lotes FOR ALL USING (auth.role() = 'authenticated');
+-- ============================================
+-- TABELA: proprietario_relacionamentos
+-- ============================================
+CREATE TABLE IF NOT EXISTS proprietario_relacionamentos (
+    id BIGSERIAL PRIMARY KEY,
+    proprietario_origem_id BIGINT REFERENCES proprietarios(id) ON DELETE CASCADE,
+    proprietario_destino_id BIGINT REFERENCES proprietarios(id) ON DELETE CASCADE,
+    tipo_vinculo VARCHAR(100),
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 ```
 
 ### Relacionamentos
@@ -355,7 +372,9 @@ app.js (Entry Point)
   ├── search_handler.js (Busca)
   ├── editor_handler.js (CRUD)
   ├── crm_handler.js (CRM)
-  └── enrichment_handler.js (APIs Externas)
+  ├── enrichment_handler.js (APIs Externas)
+  ├── notifications_handler.js (Sininho)
+  └── infosimples_handler.js (Certidões Jurídicas)
 ```
 
 ### `app.js` - Entry Point
@@ -697,6 +716,38 @@ serve(async (req) => {
 supabase functions deploy enrich-data
 supabase secrets set DATASTONE_API_KEY=your-key
 ```
+
+### `infosimples-api` - Automação de Certidões
+
+**Localização:** `supabase/functions/infosimples-api/index.ts`
+
+**Propósito:**
+- Proxy para API Infosimples (emissão de documentos jurídicos)
+- Tratamento de parâmetros específicos por tribunal (TJSP, TRF, etc)
+- Validação de saldo
+
+**Fluxo:**
+1. Recebe `params` do frontend
+2. Chama API Infosimples (POST)
+3. Retorna JSON com links ou status "Pendente"
+
+### `email-monitor` - Cron Job de Monitoramento
+
+**Localização:** `supabase/functions/email-monitor/index.ts`
+
+**Propósito:**
+- Monitorar caixa de email (Gmail/IMAP) a cada 10 min
+- Identificar e-mails de tribunais com anexos (PDFs)
+- Download automático para Storage
+- Notificação por e-mail para o administrador
+
+**Configuração (Cron):**
+- Agendamento via `pg_cron` no banco de dados.
+- Frequência: `*\/10 * * * *` (A cada 10 minutos).
+
+**Variáveis de Ambiente Necessárias:**
+- `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_HOST`
+- `INFOSIMPLES_TOKEN` (para api)
 
 ---
 

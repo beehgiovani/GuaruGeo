@@ -1,6 +1,6 @@
 -- ============================================================================
 -- DATABASE SCHEMA V2 (EXAUSTIVO) - GUARUJÁ GEO
--- Versão Definitiva: 2026-01-26
+-- Versão Definitiva: 2026-01-30 (Atualizado)
 -- 
 -- ESTE ARQUIVO CONTÉM A DEFINIÇÃO COMPLETA DO BANCO DE DADOS.
 -- INCLUI: Tabelas, Índices, Triggers, Views, Funções, RLS, Storage e Realtime.
@@ -12,6 +12,8 @@
 
 -- Extensão UUID (necessária para ids)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_cron";
+CREATE EXTENSION IF NOT EXISTS "pg_net";
 
 -- Função: Remover Acentos (Imutável para Índices)
 CREATE OR REPLACE FUNCTION remove_accents_custom(text) RETURNS text AS $$
@@ -134,6 +136,17 @@ CREATE TABLE IF NOT EXISTS proprietarios (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 2.4 RELACIONAMENTOS (Societários e Familiares)
+CREATE TABLE IF NOT EXISTS proprietario_relacionamentos (
+    id BIGSERIAL PRIMARY KEY,
+    proprietario_origem_id BIGINT REFERENCES proprietarios(id) ON DELETE CASCADE,
+    proprietario_destino_id BIGINT REFERENCES proprietarios(id) ON DELETE CASCADE,
+    tipo_vinculo VARCHAR(100), -- 'Sócio', 'Sócio-Administrador', 'Mãe', 'Filho', etc.
+    metadata JSONB DEFAULT '{}'::jsonb, -- % participação, data entrada, etc.
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(proprietario_origem_id, proprietario_destino_id, tipo_vinculo)
+);
+
 -- 2.4 UNIDADES (Vínculo Lote-Proprietário)
 CREATE TABLE IF NOT EXISTS unidades (
     inscricao VARCHAR(20) PRIMARY KEY, -- Ex: 10074006001
@@ -232,6 +245,17 @@ CREATE TABLE IF NOT EXISTS mercado_historico (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
+-- 3.4 NOTIFICAÇÕES (Sistema e Certidões)
+CREATE TABLE IF NOT EXISTS notificacoes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    titulo TEXT NOT NULL,
+    mensagem TEXT,
+    link_url TEXT, -- Link para o PDF no Storage
+    tipo TEXT DEFAULT 'certidao', -- 'certidao', 'sistema', etc.
+    lida BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- ============================================
 -- 4. ANALYTICS
 -- ============================================
@@ -291,6 +315,22 @@ HAVING COUNT(DISTINCT l.inscricao) >= 5;
 
 CREATE INDEX IF NOT EXISTS idx_vw_bairros_nome ON vw_bairros_centroids(nome);
 
+-- 4.2 CONFIGURAÇÃO DE BAIRROS (Manual Adjustments)
+-- Permite override da posição e visibilidade dos labels dos bairros
+CREATE TABLE IF NOT EXISTS bairros_ajustes (
+    nome VARCHAR(100) PRIMARY KEY,
+    visible BOOLEAN DEFAULT true,
+    custom_utm_x FLOAT,
+    custom_utm_y FLOAT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE POLICY "Public Read Ajustes" ON bairros_ajustes FOR SELECT USING (true);
+CREATE POLICY "Admin All Ajustes" ON bairros_ajustes FOR ALL USING (true);
+ALTER TABLE bairros_ajustes ENABLE ROW LEVEL SECURITY;
+
+
 -- ============================================
 -- 5. ÍNDICES E TRIGGERS
 -- ============================================
@@ -329,15 +369,18 @@ CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at 
 ALTER TABLE lotes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE unidades ENABLE ROW LEVEL SECURITY;
 ALTER TABLE proprietarios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE proprietario_relacionamentos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE visitas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE referencias_geograficas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notificacoes ENABLE ROW LEVEL SECURITY;
 
 -- Políticas "Permissivas" (Ajustar para prod conforme necessidade de login)
 CREATE POLICY "Public Read Lotes" ON lotes FOR SELECT USING (true);
 CREATE POLICY "Public Read Unidades" ON unidades FOR SELECT USING (true);
 CREATE POLICY "Public Read Proprietarios" ON proprietarios FOR SELECT USING (true);
+CREATE POLICY "Public Read Relacionamentos" ON proprietario_relacionamentos FOR SELECT USING (true);
 CREATE POLICY "Public Read Referencias" ON referencias_geograficas FOR SELECT USING (true);
 
 -- Analytics (Escrita Aberta)
@@ -348,6 +391,16 @@ CREATE POLICY "Admin All Lotes" ON lotes FOR ALL USING (true);
 CREATE POLICY "Admin All Unidades" ON unidades FOR ALL USING (true);
 CREATE POLICY "Admin All Proprietarios" ON proprietarios FOR ALL USING (true);
 CREATE POLICY "Admin All Referencias" ON referencias_geograficas FOR ALL USING (true);
+
+-- Notificações (Públicas para Monitor e Site)
+DROP POLICY IF EXISTS "Leitura Pública" ON public.notificacoes;
+CREATE POLICY "Leitura Pública" ON public.notificacoes FOR SELECT TO public USING (true);
+
+DROP POLICY IF EXISTS "Inserção Pública" ON public.notificacoes;
+CREATE POLICY "Inserção Pública" ON public.notificacoes FOR INSERT TO public WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Update Público" ON public.notificacoes;
+CREATE POLICY "Update Público" ON public.notificacoes FOR UPDATE TO public USING (true);
 
 -- ============================================
 -- 7. STORAGE E REALTIME
@@ -360,21 +413,23 @@ BEGIN
         CREATE PUBLICATION supabase_realtime;
     END IF;
 END $$;
-ALTER PUBLICATION supabase_realtime ADD TABLE lotes, unidades, proprietarios;
+ALTER PUBLICATION supabase_realtime ADD TABLE lotes, unidades, proprietarios, proprietario_relacionamentos, notificacoes;
 
 -- Storage (Bucket de Imagens)
 INSERT INTO storage.buckets (id, name, public) VALUES ('lotes_images', 'lotes_images', true) ON CONFLICT DO NOTHING;
-
 CREATE POLICY "Storage Public Read" ON storage.objects FOR SELECT USING (bucket_id = 'lotes_images');
 CREATE POLICY "Storage Pulic Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'lotes_images');
 
--- Storage (Bucket de Documentos)
+-- Storage (Bucket de Documentos de Imóveis)
 INSERT INTO storage.buckets (id, name, public) VALUES ('unit_documents', 'unit_documents', true) ON CONFLICT DO NOTHING;
-
 CREATE POLICY "Storage Docs Public Read" ON storage.objects FOR SELECT USING (bucket_id = 'unit_documents');
 CREATE POLICY "Storage Docs Pulic Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'unit_documents');
-CREATE POLICY "Storage Docs Public Delete" ON storage.objects FOR DELETE USING (bucket_id = 'unit_documents');
-CREATE POLICY "Storage Docs Public Update" ON storage.objects FOR UPDATE USING (bucket_id = 'unit_documents');
+
+-- Storage (Bucket de Certidões Jurídicas - NOVO)
+INSERT INTO storage.buckets (id, name, public) VALUES ('certidoes_juridicas', 'certidoes_juridicas', true) ON CONFLICT DO NOTHING;
+CREATE POLICY "Certidoes Public Read" ON storage.objects FOR SELECT USING (bucket_id = 'certidoes_juridicas');
+CREATE POLICY "Certidoes Authenticated Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'certidoes_juridicas');
+-- Nota: A "Authenticated" aqui inclui anon se não restringirmos, mas usamos Service Role na Edge Function.
 
 -- ============================================
 -- 2.5 ARQUIVOS E DOCUMENTOS (File System)
@@ -392,9 +447,3 @@ CREATE TABLE IF NOT EXISTS unit_files (
 
 CREATE INDEX IF NOT EXISTS idx_unit_files_inscricao ON unit_files(unit_inscricao);
 CREATE INDEX IF NOT EXISTS idx_unit_files_folder ON unit_files(folder);
-
-
--- ============================================
--- 3. CRM E DADOS DE MERCADO
--- ... (Continua sections 3 existing code)
-

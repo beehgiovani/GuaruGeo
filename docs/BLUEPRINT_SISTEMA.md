@@ -30,6 +30,11 @@ O Guarujá GeoMap é um sistema de Inteligência Imobiliária Geográfica (GIS) 
     *   Desenhos no mapa (linhas de mar, POIs) devem ser salvos na tabela `referencias_geograficas`.
 5.  **Offline-First (Cache):**
     *   Dados pesados (lotes) devem usar `IndexedDB` (via `map_handler.js`). Sempre verifique o cache antes de bater na rede.
+6.  **Notificações & Realtime:**
+    *   Toda ação assíncrona (certidões, enriquecimento) deve gerar uma entrada na tabela `notificacoes`.
+    *   O frontend deve escutar eventos `INSERT` em tempo real para disparar o "balão" (Toast) e atualizar o sininho.
+7.  **UX de Documentos:**
+    *   Sempre use o visualizador HTML dedicado para certidões enviadas por órgãos governamentais para garantir legibilidade e facilitar impressão.
 
 ---
 

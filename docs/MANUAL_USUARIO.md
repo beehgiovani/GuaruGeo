@@ -65,7 +65,9 @@ Ao clicar em um proprietário (seja nos resultados da busca ou pelo botão "Ver 
 - **Portfólio Imobiliário:** Veja todos os imóveis registrados para aquele CPF/CNPJ no Guarujá.
 - **Navegação Direta:** Clique em qualquer imóvel da lista e o mapa fará o "voo" (zoom progressivo) direto para o local.
 - **Consulta de Dados (DataStone):** Clique em **"Consultar Dados"** para buscar telefones e e-mails originais da RFB/DataStone.
+- **Relacionamentos (Empresas e Família):** Na aba **"Outras Info"**, veja os sócios de uma empresa ou os membros da família de um proprietário.
 - **Sync Automático:** Assim que você consulta um dono, os novos contatos aparecem em todas as suas unidades automaticamente.
+- **Sininho Dourado:** Atente-se ao ícone de sino na barra lateral; ele mudará para **Dourado** quando o monitoramento encontrar novidades para esse dono.
 
 ---
 
@@ -91,6 +93,33 @@ O CRM permite gerenciar seus leads e fazer o "matching" com imóveis:
 1. Clique no botão **👥**.
 2. Cadastre o Lead (Nome, WhatsApp, Orçamento).
 3. Use o botão **"🔍 Buscar Compatíveis"** para o sistema sugerir unidades que atendem ao perfil do cliente.
+
+---
+
+## ⚖️ 8. Automação Jurídica (Certidões Negativas)
+
+Agora você pode emitir certidões automaticamente sem sair do sistema!
+
+### Como usar:
+1.  **Acesse a aba Jurídico:**
+    - Clique no ícone de balança (⚖️) no topo direito ou selecione um proprietário.
+2.  **Selecione os Órgãos:**
+    - Marque as caixas dos órgãos desejados (TJSP, TRF, TRT, Receita Federal, CNDT, etc).
+3.  **Clique em "Solicitar Certidões":**
+    - O sistema mostrará o progresso em tempo real.
+
+### Tipos de Resultado:
+- **✅ Sucesso:** A certidão foi emitida em PDF. Clique em **"Abrir PDF"** (botão Azul).
+- **✅ Nada Consta:** O sistema verificou e não há processos, mas o órgão não gera PDF. (Aparece um "Check" verde).
+- **🌐 Comprovante Web:** O órgão retornou um HTML/Recibo web. Clique em **"Ver Comprovante Web"** (botão Amarelo).
+- **⏳ Aguardando:** O pedido foi aceito, mas o tribunal demora algumas horas. **Fique tranquilo!** O sino da barra lateral avisará quando ficar pronto.
+
+### 🔔 9. Sistema de Notificações
+O sistema monitora seu e-mail e as certidões solicitadas em tempo real:
+- **Ícone Dourado:** Indica que você tem mensagens não lidas.
+- **Badge Vermelha:** Mostra a quantidade de documentos prontos para visualização.
+- **Balões (Toasts):** Quando uma certidão chega, um aviso aparece no canto da tela. Basta clicar nele para abrir o documento.
+- **Abertura Direta:** As notificações abrem as certidões diretamente no visualizador premium, prontas para impressão.
 
 ---
 

@@ -57,7 +57,19 @@ O **Guarujá GeoMap** é uma plataforma web premium desenvolvida para imobiliár
 ### 6. Enriquecimento de Dados
 - Integração com **DataStone API** via Edge Function
 - Busca automática de telefones e emails por CPF/CNPJ
-- Atualização em tempo real no banco de dados
+- [ ] Atualização em tempo real no banco de dados
+
+### 7. Automação Jurídica & Certidões ⚖️
+- **Consulta Automatizada**: Integração com API Infosimples para busca de certidões.
+- **Múltiplos Órgãos**: TRF, TJSP, TRT, Receita Federal, CNDT e mais.
+- **Visualizador Premium**: Modal dedicado para conferência e impressão de certidões HTML/PDF.
+- **Gestão de Saldos**: Controle de custos por consulta.
+
+### 8. Sistema de Notificações 🔔 (Sininho)
+- **Real-time Alert**: Notificações instantâneas via Supabase Realtime.
+- **Golden Bell**: Ícone de sino com badge de contagem de não lidas.
+- **Monitoramento Passivo**: Robô que monitora e-mails e notifica novas certidões prontas.
+- **Toasts Premium**: Balões informativos clicáveis para acesso rápido ao documento.
 
 ---
 
@@ -76,7 +88,9 @@ O **Guarujá GeoMap** é uma plataforma web premium desenvolvida para imobiliár
   - Realtime subscriptions
 - **Supabase Edge Functions** (Deno)
   - `enrich-data` - Proxy para DataStone API
-- **Supabase Storage** - Armazenamento de imagens
+  - `infosimples-api` - Proxy para emissão de certidões
+  - `email-monitor` - Robô de monitoramento de e-mails (Cron Job)
+- **Supabase Storage** - Armazenamento de imagens e documentos jurídicos
 
 ### Analytics & Deploy
 - **Firebase Hosting** - Deploy e CDN
@@ -101,6 +115,8 @@ guaruja_geo/
 │   ├── editor_handler.js      # CRUD de lotes/unidades
 │   ├── crm_handler.js         # Sistema CRM
 │   ├── enrichment_handler.js  # Integração DataStone
+│   ├── notifications_handler.js # Sistema de Notificações (Sininho)
+│   ├── infosimples_handler.js # Gerenciador de Certidões Jurídicas
 │   ├── utils.js               # Utilidades gerais
 │   ├── supabase_client.js     # Cliente Supabase
 │   ├── styles.css             # Estilos principais
@@ -185,12 +201,12 @@ Unidades autônomas (apartamentos, salas, garagens)
 | `telefone`, `email` | TEXT | Contatos enriquecidos |
 | `galeria` | JSONB | Imagens da unidade |
 
-### Tabela: `crm_leads`
+### Tabela: `leads`
 Sistema CRM para gestão de clientes
 
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
-| `id` | BIGSERIAL PK | ID único |
+| `id` | UUID PK | ID único |
 | `nome` | TEXT | Nome do lead |
 | `contato` | TEXT | Telefone/WhatsApp |
 | `status` | VARCHAR(20) | Temperatura (Quente/Morno/Frio) |
