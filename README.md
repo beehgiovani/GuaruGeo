@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 🗺️ Guarujá GeoMap
 
 **Sistema web interativo de geoprocessamento e gestão imobiliária para o município de Guarujá/SP**
@@ -149,8 +148,8 @@ guaruja_geo/
 │   └── FIREBASE_COMMANDS.md    # Comandos úteis
 │
 ├── firebase.json               # Configuração Firebase
-├── .firebaserc                 # Projeto Firebase
-└── README.md                   # Este arquivo
+│   ├── .firebaserc             # Projeto Firebase
+│   └── README.md               # Este arquivo
 ```
 
 ---
@@ -460,8 +459,10 @@ Sistema completo de geoprocessamento e gestão imobiliária com dados cadastrais
 - [ ] Integração com WhatsApp Business
 - [ ] App mobile (React Native)
 - [ ] Multi-tenant (múltiplas cidades)
-=======
-# Guaruja Geo - Email Monitor (Standalone)
+
+---
+
+# 🤖 Guaruja Geo - Email Monitor (Standalone)
 
 Este serviço monitora a caixa de email configurada para baixar automaticamente certidões (PDFs) e salvar no Supabase Storage do projeto Guaruja Geo.
 
@@ -515,4 +516,3 @@ O Render é ideal para rodar este tipo de "Background Worker" gratuitamente ou c
 7. Clique em **Create Background Worker**.
 
 Pronto! O Render manterá o script rodando 24/7.
->>>>>>> 42cf9eed8949b6e011b2b1c436479b2ab0fa6081
