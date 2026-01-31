@@ -32,52 +32,20 @@ class NotificationsHandler {
         if (!headerActions) return;
 
         // Create Bell Button if not exists
-        if (document.getElementById('btnNotifications')) return;
+        let btn = document.getElementById('btnNotifications');
 
-        const btn = document.createElement('button');
-        btn.id = 'btnNotifications';
-        btn.className = 'notifications-btn';
-        btn.title = 'Notificações';
-        btn.style.cssText = `
-            background: none; 
-            border: none; 
-            font-size: 1.2rem; 
-            cursor: pointer; 
-            color: #666; 
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 5px;
-            transition: color 0.3s ease;
-        `;
-        btn.innerHTML = `
-            <i class="fas fa-bell"></i>
-            <span id="notifBadge" style="
-                display: none;
-                position: absolute;
-                top: -2px;
-                right: -2px;
-                background-color: #ef4444;
-                color: white;
-                font-size: 0.65rem;
-                min-width: 16px;
-                height: 16px;
-                line-height: 16px;
-                border-radius: 50%;
-                font-weight: bold;
-                text-align: center;
-                border: 2px solid white;
-            ">0</span>
-        `;
+        if (!btn) {
+            console.warn("⚠️ Notification button not found in HTML. Notifications UI disabled.");
+            return;
+        }
 
+        // Attach listeners to EXISTING button
+        btn.onclick = (e) => this.toggleDropdown(e);
         btn.onmouseover = () => { if (this.unreadCount === 0) btn.style.color = '#3b82f6'; };
         btn.onmouseout = () => { if (this.unreadCount === 0) btn.style.color = '#666'; };
 
-        btn.onclick = (e) => this.toggleDropdown(e);
-
-        // Insert before Logout button (last child usually)
-        headerActions.insertBefore(btn, headerActions.lastElementChild);
+        // No need to appendChild as it is in HTML
+        // headerActions.appendChild(btn);
 
         // Create Dropdown Container (Hidden)
         const dropdown = document.createElement('div');

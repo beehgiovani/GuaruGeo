@@ -53,7 +53,8 @@
 
 .header-actions {
     display: flex;
-    gap: 16px;
+    gap: 8px;
+    /* Reduced from 16px to prevent overflow */
     align-items: center;
     flex-wrap: nowrap;
     /* Prevent wrapping */
@@ -332,4 +333,27 @@
 .search-item p {
     font-size: 12px;
     color: var(--text-secondary);
+}
+
+/* Radar Alert Animation */
+@keyframes radarPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+
+    70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
+
+.radar-active {
+    color: #ef4444 !important;
+    animation: radarPulse 2s infinite;
 }

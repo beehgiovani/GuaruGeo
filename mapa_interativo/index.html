@@ -89,7 +89,43 @@
         </div>
     </div>
 
-    <!-- Image Modal (Windowed Lightbox) -->
+
+    <!-- Download Apps Modal -->
+    <div id="downloadModal" class="custom-modal-overlay" style="z-index: 20000;">
+        <div class="custom-modal" style="max-width: 500px; text-align: center;">
+            <div class="custom-modal-header">
+                <div class="custom-modal-title">📱 Baixe o Guarujá GeoMap</div>
+                <button class="custom-modal-close"
+                    onclick="document.getElementById('downloadModal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="custom-modal-body" style="padding: 24px;">
+                <p style="color: #64748b; margin-bottom: 24px;">
+                    Tenha o poder da inteligência imobiliária diretamente no seu dispositivo.
+                </p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <!-- Desktop -->
+                    <!-- Desktop -->
+                    <a href="https://github.com/beehgiovani/GuaruGeo/releases/latest" target="_blank"
+                        class="dashboard-btn primary"
+                        style="flex-direction: column; padding: 24px; font-size: 14px; height: auto; text-decoration: none;">
+                        <i class="fab fa-github" style="font-size: 32px; margin-bottom: 12px;"></i>
+                        <span style="display: block; margin-bottom: 4px;">Download no GitHub</span>
+                        <small style="opacity: 0.8; font-weight: 400; font-size: 11px;">Windows (.exe)</small>
+                    </a>
+
+                    <!-- Mobile -->
+                    <a href="https://github.com/beehgiovani/GuaruGeo/releases/latest" target="_blank"
+                        class="dashboard-btn secondary"
+                        style="flex-direction: column; padding: 24px; font-size: 14px; height: auto; text-decoration: none;">
+                        <i class="fab fa-android" style="font-size: 32px; margin-bottom: 12px; color: #3ddc84;"></i>
+                        <span style="display: block; margin-bottom: 4px;">Android Mobile</span>
+                        <small style="opacity: 0.8; font-weight: 400; font-size: 11px;">Baixar APK</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="image-modal" class="image-modal" onclick="closeImageModal()">
         <div class="modal-window-frame" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
@@ -163,7 +199,14 @@
             </div>
             <div class="sidebar-header">
                 <div class="header-top-row">
-                    <h2>Guarugeo</h2>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button onclick="document.getElementById('downloadModal').classList.add('active')"
+                            style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #10b981; display: flex; align-items: center; justify-content: center;"
+                            title="Baixar App Android/Windows">
+                            <i class="fas fa-desktop"></i>
+                        </button>
+                        <h2>Guarugeo</h2>
+                    </div>
                     <div class="header-actions">
                         <button class="crm-leads-btn" onclick="window.showLeadsPanel()" title="Ver Lista de Clientes">
                             <i class="fas fa-users"></i>
@@ -182,6 +225,16 @@
                         <button onclick="window.logout()"
                             style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #666;"
                             title="Sair / Logout">🚪</button>
+
+                        <!-- Notification Bell (Hardcoded) -->
+                        <button id="btnNotifications"
+                            onclick="window.NotificationsHandler && window.NotificationsHandler.toggleDropdown(event)"
+                            title="Notificações"
+                            style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #666; position: relative; display: flex; align-items: center; justify-content: center; padding: 5px;">
+                            <i class="fas fa-bell"></i>
+                            <span id="notifBadge"
+                                style="display: none; position: absolute; top: -2px; right: -2px; background-color: #ef4444; color: white; font-size: 0.65rem; min-width: 16px; height: 16px; line-height: 16px; border-radius: 50%; font-weight: bold; text-align: center; border: 2px solid white;">0</span>
+                        </button>
                     </div>
                 </div>
                 <div class="search-box">
@@ -452,6 +505,8 @@
 
     <!-- Legal Engines -->
     <script src="contract_templates.js"></script>
+    <script src="renovation_radar.js"></script>
+    <script src="push_handler.js"></script>
 
     <!-- Mobile Native -->
     <script src="camera_handler.js"></script>

@@ -60,6 +60,15 @@ async function init() {
     // We just need to make sure UI is aware of completion if needed.
     // await loadInitialData(); 
 
+    if (window.RenovationRadar) window.RenovationRadar.init();
+    if (window.PushHandler) window.PushHandler.init();
+
+    // Start Onboarding (if first time)
+    // Start Onboarding (Moved to map_handler.js to wait for data load)
+    // if (window.Onboarding) {
+    //     setTimeout(() => window.Onboarding.checkAndStart(), 2000);
+    // }
+
     Loading.hide();
     Toast.success('Bem-vindo ao Guarujá GeoMap!');
 }

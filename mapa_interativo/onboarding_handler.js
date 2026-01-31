@@ -10,11 +10,8 @@ window.Onboarding = {
         console.log("🎓 Onboarding Module Initialized");
 
         // Wait a bit for map/app to load
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                this.checkAndStart();
-            }, 2000);
-        });
+        // Wait a bit for map/app to load - MOVED TO APP.JS INIT
+        // window.addEventListener('load', () => { ... });
 
         // Add 'Ajuda' button to sidebar header or somewhere accessible
         this.addHelpButton();

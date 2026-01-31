@@ -15,17 +15,17 @@ window.showFarolInsights = async function () {
         // 2. Coletar dados de oferta (Resumo das unidades disponíveis)
         const { data: units } = await window.supabaseApp
             .from('unidades')
-            .select('tipo, valor, lotes!inner(zona)')
+            .select('tipo, lotes!inner(zona)') // REMOVE 'valor' to fix 400 Bad Request
             .eq('status_venda', 'Disponível');
 
         // 3. Preparar resumo para a IA
         const summary = {
-            demanda: leads.reduce((acc, lead) => {
+            demanda: (leads || []).reduce((acc, lead) => {
                 const key = `${lead.tipo_imovel || 'Imóvel'} na Zona ${lead.zonas_interesse?.[0] || '?'}`;
                 acc[key] = (acc[key] || 0) + 1;
                 return acc;
             }, {}),
-            oferta: units.reduce((acc, u) => {
+            oferta: (units || []).reduce((acc, u) => {
                 const key = `${u.tipo || 'Imóvel'} na Zona ${u.lotes?.zona || '?'}`;
                 acc[key] = (acc[key] || 0) + 1;
                 return acc;

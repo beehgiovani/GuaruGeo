@@ -8,10 +8,10 @@ Este documento detalha o planejamento para a próxima fase do projeto, focado em
 O objetivo é que o corretor entenda o poder da ferramenta no primeiro minuto.
 
 ### Etapas do Tour Guiado (Intro.js):
-- [ ] **Passo 1: O "Voo"**: Demonstrar a busca por endereço ou edifício e o zoom automático.
-- [ ] **Passo 2: Perfil 360°**: Mostrar onde ficam os contatos (Phones/Emails) e o portfólio do dono.
-- [ ] **Passo 3: Jurídico sem Escada**: Demonstrar a solicitação de certidões em 1 clique.
-- [ ] **Passo 4: Sininho Inteligente**: Explicar a notificação real-time para documentos prontos.
+- [x] **Passo 1: O "Voo"**: Demonstrar a busca por endereço ou edifício e o zoom automático.
+- [x] **Passo 2: Perfil 360°**: Mostrar onde ficam os contatos (Phones/Emails) e o portfólio do dono.
+- [x] **Passo 3: Jurídico sem Escada**: Demonstrar a solicitação de certidões em 1 clique.
+- [x] **Passo 4: Sininho Inteligente**: Explicar a notificação real-time para documentos prontos.
 
 ### Materiais de Apoio:
 - [ ] Criar playlist de "Micro-Training" (vídeos de 20s embutidos nos modais).
@@ -23,24 +23,24 @@ O objetivo é que o corretor entenda o poder da ferramenta no primeiro minuto.
 Migrar de uma aba de navegador para um ícone no sistema do usuário.
 
 ### Mobile (React Native / Capacitor):
-- [ ] **Notificações Push**: Alertas de certidões diretamente na tela de bloqueio.
-- [ ] **Geolocalização**: Ver lotes ao redor com base no GPS do celular (uso em campo).
-- [ ] **Câmera Integrada**: Foto da fachada direto do celular para o Supabase Storage.
+- [x] **Notificações Push**: Alertas de certidões diretamente na tela de bloqueio.
+- [x] **Geolocalização**: Ver lotes ao redor com base no GPS do celular (uso em campo).
+- [x] **Câmera Integrada**: Foto da fachada direto do celular para o Supabase Storage.
 
 ### Desktop (Electron):
-- [ ] **Auto-Start**: Iniciar com o Windows/Mac.
-- [ ] **Modo Janela**: Funcionar como um dashboard fixo na segunda tela do corretor.
+- [x] **Auto-Start**: Iniciar com o Windows/Mac (Configurado no `package.json`).
+- [x] **Modo Janela**: Funcionar como um dashboard fixo na segunda tela do corretor (`electron-main.js`).
 
 ---
 
 ## 🤖 3. Inteligência de Mercado (Monopólio de Dados)
 Aumentar o ticket médio através de funções que ninguém no mercado possui.
 
-- [ ] **Heatmap de Interesse**: Mapa de calor mostrando as áreas mais buscadas no sistema.
-- [ ] **GuaruBot (AI Assistant)**: Chatbot que responde consultas complexas (ex: *"Quem são os top 10 proprietários da Enseada?"*).
-dar acesso total a ia, certidões, links, localizações, fotos, documentos, proprietarios, etc. todo o nosso sql nas mãos da ia para ela nos guiar
-- [ ] **Gerador de Contratos**: Preenchimento automático de contratos de venda e autorizações com dados do proprietário + imóvel e cliente selecionado para estar tudo encaixado pronto só imrpimir e assinar, ou assinar digitalmente.
-- [ ] **Radar de Renovação**: Notificar corretor quando uma certidão baixada há 90 dias expirar.
+- [x] **Heatmap de Interesse**: Mapa de calor mostrando as áreas mais buscadas no sistema.
+- [x] **GuaruBot (AI Assistant)**: Chatbot que responde consultas complexas (ex: *"Quem são os top 10 proprietários da Enseada?"*).
+- [x] **Integração Total**: Acesso total a ia, certidões, links, localizações, fotos, documentos, proprietarios, etc. todo o nosso sql nas mãos da ia.
+- [x] **Gerador de Contratos**: Preenchimento automático de contratos de venda e autorizações com dados do proprietário + imóvel e cliente selecionado para estar tudo encaixado pronto só imprimir e assinar, ou assinar digitalmente.
+- [x] **Radar de Renovação**: Notificar corretor quando uma certidão baixada há 90 dias expirar.
 
 ---
 

@@ -56,11 +56,11 @@ const AnalyticsHandler = {
                     blur: 15,
                     maxZoom: 17,
                     gradient: {
-                        0.4: 'blue',
-                        0.6: 'cyan',
-                        0.7: 'lime',
-                        0.8: 'yellow',
-                        1.0: 'red'
+                        0.4: 'rgba(0, 0, 255, 0.4)',    // Blue with 60% opacity
+                        0.6: 'rgba(0, 255, 255, 0.4)',  // Cyan
+                        0.7: 'rgba(0, 255, 0, 0.4)',    // Lime
+                        0.8: 'rgba(255, 255, 0, 0.4)',  // Yellow
+                        1.0: 'rgba(255, 0, 0, 0.4)'     // Red
                     }
                 }).addTo(window.map);
 
@@ -78,10 +78,43 @@ const AnalyticsHandler = {
     },
 
     async generateMockData() {
-        // In a real app, we would fetch this from Supabase (e.g., clicks logs)
-        // For now, we simulate hotspots in "Prime" areas (Enseada, Pitangueiras)
-
+        console.log("🔥 Generating/Fetching Heatmap Data...");
         const hotspots = [];
+
+        try {
+            // 1. Try fetching REAL data from Supabase (Lotes centroids)
+            const { data: lotes, error } = await window.supabaseApp
+                .from('lotes')
+                .select('minx, miny, bairro')
+                .limit(1000); // Sample size
+
+            if (!error && lotes && lotes.length > 0) {
+                console.log(`📡 Loaded ${lotes.length} real points for Heatmap.`);
+
+                lotes.forEach(lote => {
+                    if (lote.minx && lote.miny && window.utmToLatLon) {
+                        try {
+                            const coords = window.utmToLatLon(lote.minx, lote.miny);
+                            // Add some jitter to avoid perfect overlap if precision is low
+                            // But usually centroids are unique enough.
+                            // Intensity: 1.0 (Standard)
+                            hotspots.push([coords.lat, coords.lng, 0.8]);
+                        } catch (e) {
+                            // Ignore conversion errors
+                        }
+                    }
+                });
+            }
+
+            // If we got real data, return it
+            if (hotspots.length > 0) return hotspots;
+
+        } catch (e) {
+            console.error("Heatmap Fetch Error:", e);
+        }
+
+        // FALLBACK: Corrected Coordinates (On Land)
+        console.warn("⚠️ Using Fallback Mock Data for Heatmap");
 
         // Helper to add random points around a center
         const addCluster = (lat, lng, count, spread) => {
@@ -89,19 +122,19 @@ const AnalyticsHandler = {
                 hotspots.push([
                     lat + (Math.random() - 0.5) * spread,
                     lng + (Math.random() - 0.5) * spread,
-                    Math.random() // Intensity (0-1)
+                    Math.random() // Intensity
                 ]);
             }
         };
 
-        // Pitangueiras (High Density)
-        addCluster(-24.0080, -46.2550, 300, 0.015);
+        // Pitangueiras (Corrected: Moved North-West onto land)
+        addCluster(-23.9980, -46.2600, 300, 0.015);
 
-        // Enseada (High Value)
-        addCluster(-23.9950, -46.2200, 400, 0.020);
+        // Enseada (Corrected: Moved North onto land)
+        addCluster(-23.9850, -46.2250, 400, 0.020);
 
-        // Jardim Acapulco (Exclusive)
-        addCluster(-23.9650, -46.1900, 150, 0.010);
+        // Jardim Acapulco (Corrected: Inland)
+        addCluster(-23.9600, -46.1900, 150, 0.010);
 
         return hotspots;
     }

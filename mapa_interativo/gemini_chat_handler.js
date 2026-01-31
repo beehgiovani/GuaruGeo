@@ -206,62 +206,146 @@ Profissional, direto, focado em fechar negócios. Use emojis imobiliários (🏢
     }
 
     // --- AGENT LOOP (The Brain) ---
+    // --- AGENT LOOP (The Brain) ---
     async agentLoop(userPrompt) {
-        // Clone history and append user message
-        let currentTurnHistory = [...this.history, { role: 'user', parts: [{ text: userPrompt }] }];
+        // Main Chat: Uses and updates global history
+        const activeHistory = [...this.history];
+        const response = await this.runsInternalLoop(userPrompt, activeHistory);
+
+        // Update Global History only on success
+        this.history = [...activeHistory,
+        { role: 'user', parts: [{ text: userPrompt }] },
+        { role: 'model', parts: [{ text: response }] }
+        ];
+        // Note: The internal loop handles intermediate tool steps, 
+        // but for simplicity in the UI history we might just want input/output.
+        // However, keeping tool logs in history is better for context.
+        // Let's stick to the previous logic but refactored:
+
+        return response;
+    }
+
+    /**
+     * Headless interaction for internal system calls (Insights, Tooltips)
+     * Does NOT update global history.
+     */
+    async ask(prompt) {
+        console.log("🧠 Farol.ask (Headless):", prompt.substring(0, 50) + "...");
+        // Start with empty history for specific tasks to avoid pollution
+        return await this.internalAgentLoop(prompt, []);
+    }
+
+    async internalAgentLoop(userPrompt, initialHistory) {
+        // Clone history to avoid mutating arguments
+        let currentTurnHistory = [...initialHistory, { role: 'user', parts: [{ text: userPrompt }] }];
         let finalResponse = "";
-        let maxSteps = 5; // Prevent loops
+        let maxSteps = 5;
 
         for (let step = 0; step < maxSteps; step++) {
 
             // 1. Call LLM
             const llmResponse = await this._callGeminiApi(currentTurnHistory);
 
-            // 2. Check for Tool Calls (JSON Code Blocks)
+            // 2. Check for Tool Calls
             const toolCallMatch = llmResponse.match(/```json\s*({[\s\S]*?"tool"[\s\S]*?})\s*```/);
 
             if (toolCallMatch) {
-                // IT IS A TOOL CALL
                 try {
                     const toolData = JSON.parse(toolCallMatch[1]);
-                    console.log(`🔧 Executing Tool: ${toolData.tool}`, toolData.args);
+                    console.log(`🔧 Tool Call: ${toolData.tool}`, toolData.args);
 
-                    this.typingIndicator.innerHTML = `<i class="fas fa-database fa-spin"></i> Executando: ${toolData.tool}...`;
+                    // Show indicator if visible (only for main chat, but harmless if helpful)
+                    if (this.typingIndicator) {
+                        this.typingIndicator.innerHTML = `<i class="fas fa-database fa-spin"></i> Executando: ${toolData.tool}...`;
+                    }
 
-                    // Execute Tool
                     const toolResult = await this.executeTool(toolData.tool, toolData.args);
-                    console.log(`✅ Tool '${toolData.tool}' finished. Result sample:`, JSON.stringify(toolResult).substring(0, 100) + "...");
 
-                    // Feed result back to LLM
                     const toolOutputMsg = {
-                        role: 'user', // We roleplay as 'system' outputting data
-                        parts: [{ text: `[TOOL_RESULT]\n${JSON.stringify(toolResult)}\n[/TOOL_RESULT]\n\nAgora analise esses dados e responda ao usuário.` }]
+                        role: 'user',
+                        parts: [{ text: `[TOOL_RESULT]\n${JSON.stringify(toolResult)}\n[/TOOL_RESULT]\n\nAgora analise.` }]
                     };
 
-                    // Add BOTH the model's tool call AND the result to history
                     currentTurnHistory.push({ role: 'model', parts: [{ text: llmResponse }] });
                     currentTurnHistory.push(toolOutputMsg);
 
-                    continue; // Loop again to let LLM interpret data
+                    continue;
 
                 } catch (e) {
                     console.error("Tool Parse Error", e);
                     return "Erro ao processar comando da IA.";
                 }
             } else {
-                // FINAL ANSWER
                 finalResponse = llmResponse;
-
-                // Add final response to history
                 currentTurnHistory.push({ role: 'model', parts: [{ text: finalResponse }] });
-
-                // UPDATE GLOBAL HISTORY (Critical for Context)
-                this.history = currentTurnHistory;
-
                 break;
             }
         }
 
+        // Return just the text. 
+        // For agentLoop (Main Chat), we might want to capture the full history with tools.
+        // But for 'ask', we just want the answer.
+
+        // SIDE EFFECT: For the main chat we want to persist the 'currentTurnHistory'.
+        // We'll handle that in the caller if needed.
+        if (this.history && initialHistory === this.history) {
+            // Logic to update global history if we passed the reference (not done here to be safe)
+        }
+
+        return finalResponse;
+    }
+
+    // Wrapper for the main chat UI
+    async agentLoop(userPrompt) {
+        // We pass the CURRENT global history context
+        // BUT we need to capture the UPDATED history (with tools) to save it.
+        // The internal loop does the work locally. We need it to return the updated history or we reconstruct it.
+
+        // Let's copy-paste the logic properly to `internalAgentLoop` and make `agentLoop` use it 
+        // AND update `this.history`.
+
+        // actually, refactoring is risky. I will just ADD `ask` passing [] as history 
+        // and DUPLICATE the loop logic to avoid breaking the delicate `agentLoop` currently working.
+        // It's safer to just paste a separate `ask` method that is self-contained.
+
+        return await this.askWithHistory(userPrompt, this.history, true);
+    }
+
+    // Unified Logic
+    async askWithHistory(userPrompt, historyContext, updateGlobal = false) {
+        let currentTurnHistory = [...historyContext, { role: 'user', parts: [{ text: userPrompt }] }];
+        let finalResponse = "";
+        let maxSteps = 5;
+
+        for (let step = 0; step < maxSteps; step++) {
+            const llmResponse = await this._callGeminiApi(currentTurnHistory);
+            const toolCallMatch = llmResponse.match(/```json\s*({[\s\S]*?"tool"[\s\S]*?})\s*```/);
+
+            if (toolCallMatch) {
+                try {
+                    const toolData = JSON.parse(toolCallMatch[1]);
+                    console.log(`🔧 Tool: ${toolData.tool}`);
+                    if (this.typingIndicator && updateGlobal) this.typingIndicator.innerHTML = `<i class="fas fa-database fa-spin"></i> ${toolData.tool}...`;
+
+                    const toolResult = await this.executeTool(toolData.tool, toolData.args);
+
+                    currentTurnHistory.push({ role: 'model', parts: [{ text: llmResponse }] });
+                    currentTurnHistory.push({ role: 'user', parts: [{ text: `[TOOL_RESULT]\n${JSON.stringify(toolResult)}\n[/TOOL_RESULT]` }] });
+                    continue;
+                } catch (e) {
+                    console.error("Tool Error", e);
+                    return "Erro na Tool.";
+                }
+            } else {
+                finalResponse = llmResponse;
+                currentTurnHistory.push({ role: 'model', parts: [{ text: finalResponse }] });
+                break;
+            }
+        }
+
+        if (updateGlobal) {
+            this.history = currentTurnHistory;
+        }
         return finalResponse;
     }
 

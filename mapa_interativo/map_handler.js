@@ -478,6 +478,7 @@ window.initMap = async function () {
             isCachedLoaded = true;
             window.Loading.hide();
             window.Toast.info('Dados locais carregados. Sincronizando...', 'Início Rápido');
+            if (window.Onboarding) window.Onboarding.checkAndStart();
         }
 
         // 2. Network Fetch (Background if cached)
@@ -564,6 +565,7 @@ window.initMap = async function () {
             setTimeout(() => {
                 Loading.hide();
                 Toast.success(`${allLotes.length.toLocaleString()} lotes carregados!`);
+                if (window.Onboarding) window.Onboarding.checkAndStart();
             }, 500);
         }
 

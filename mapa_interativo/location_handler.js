@@ -22,7 +22,7 @@ const LocationHandler = {
         const controlDiv = document.createElement('div');
         controlDiv.className = 'leaflet-control landscape-control'; // Reuse existing map control class if possible or custom
         controlDiv.style.cssText = `
-            position: absolute; bottom: 100px; right: 10px; z-index: 900;
+            position: absolute; bottom: 150px; right: 10px; z-index: 900;
             background: white; border-radius: 50%; width: 50px; height: 50px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2); cursor: pointer;
             display: flex; align-items: center; justify-content: center;
