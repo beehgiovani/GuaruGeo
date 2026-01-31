@@ -1,0 +1,6 @@
+{
+    "appId": "com.omegaimoveis.guarugeo",
+    "appName": "Guarujá Geo",
+    "webDir": "mapa_interativo",
+    "bundledWebRuntime": false
+}

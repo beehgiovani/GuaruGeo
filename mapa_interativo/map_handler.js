@@ -16,55 +16,9 @@ window.currentSector = null;
 // MOBILE: GPS & DRAWER LOGIC
 // ========================================
 
+// GPS Control moved to location_handler.js
 window.addGpsControl = function () {
-    const mapContainer = document.querySelector('main#map');
-    if (!mapContainer) return;
-
-    const gpsBtn = document.createElement('button');
-    gpsBtn.className = 'gps-location-btn';
-    gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i>';
-    gpsBtn.title = "Minha Localização";
-
-    gpsBtn.onclick = (e) => {
-        e.stopPropagation();
-        if (!navigator.geolocation) {
-            window.Toast.error("GPS não suportado pelo navegador.");
-            return;
-        }
-
-        gpsBtn.classList.add('loading');
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                gpsBtn.classList.remove('loading');
-                const { latitude, longitude } = position.coords;
-
-                // Add a marker for user location if it doesn't exist
-                if (window.userLocationMarker) {
-                    window.userLocationMarker.setLatLng([latitude, longitude]);
-                } else {
-                    window.userLocationMarker = L.circleMarker([latitude, longitude], {
-                        radius: 8,
-                        fillColor: '#2196F3',
-                        color: 'white',
-                        weight: 2,
-                        opacity: 1,
-                        fillOpacity: 0.8
-                    }).addTo(window.map).bindTooltip("Você está aqui");
-                }
-
-                window.map.flyTo([latitude, longitude], 17);
-                window.Toast.success("Localização encontrada!");
-            },
-            (error) => {
-                gpsBtn.classList.remove('loading');
-                console.error("Erro GPS:", error);
-                window.Toast.error("Não foi possível obter sua localização.");
-            },
-            { enableHighAccuracy: true }
-        );
-    };
-
-    mapContainer.appendChild(gpsBtn);
+    // Legacy NO-OP
 };
 
 window.initMobileSidebar = function () {
@@ -193,7 +147,8 @@ window.initMap = async function () {
     });
 
     // --- MOBILE: GPS LOCATION CONTROL ---
-    window.addGpsControl();
+    // Handled by location_handler.js
+    // window.addGpsControl();
 
     // --- MOBILE: SIDEBAR DRAWER LOGIC ---
     window.initMobileSidebar();

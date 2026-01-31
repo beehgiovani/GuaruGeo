@@ -50,18 +50,26 @@
     <link rel="stylesheet" href="crm_styles.css">
     <link rel="stylesheet" href="ai_chat_styles.css">
     <link rel="stylesheet" href="mobile_styles.css">
+    <link rel="stylesheet" href="image_viewer.css">
+
+    <!-- Intro.js (User Onboarding) -->
+    <!-- Intro.js (User Onboarding) -->
+    <link rel="stylesheet" href="introjs.min.css">
+    <link rel="stylesheet" href="onboarding_styles.css">
 </head>
 
 <body>
     <!-- Login Overlay -->
     <div id="loginOverlay">
         <div class="login-box">
-            <img src="logo.png" alt="Omega Imóveis" style="max-width: 150px; margin-bottom: 10px;">
+            <img src="logo.png" alt="Omega Imóveis" style="max-width: 220px; margin-bottom: 10px;">
             <h2>Acesso Restrito</h2>
-            <p>Guarugeo Admin</p>
-            <input type="text" id="loginUser" placeholder="Usuário" autocomplete="off">
-            <input type="password" id="loginPass" placeholder="Senha">
-            <button id="btnLogin">Entrar</button>
+            <p>Omega Imóveis Admin</p>
+            <form onsubmit="event.preventDefault(); document.getElementById('btnLogin').click();">
+                <input type="text" id="loginUser" placeholder="Usuário" autocomplete="username">
+                <input type="password" id="loginPass" placeholder="Senha" autocomplete="current-password">
+                <button id="btnLogin" type="submit">Entrar</button>
+            </form>
             <p id="loginError" style="color: #ff4444; display: none; margin-top: 10px;">Credenciais Inválidas</p>
         </div>
     </div>
@@ -431,6 +439,22 @@
     <script src="ai_history_handler.js"></script>
     <script src="marketing_handler.js"></script>
     <script src="notifications_handler.js"></script>
+    <script src="image_viewer_handler.js"></script>
+
+    <!-- Onboarding / Tour -->
+    <script src="intro.min.js"></script>
+    <script src="onboarding_handler.js"></script>
+    <script src="location_handler.js"></script>
+
+    <!-- Analytics & Heatmap -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="analytics_handler.js"></script>
+
+    <!-- Legal Engines -->
+    <script src="contract_templates.js"></script>
+
+    <!-- Mobile Native -->
+    <script src="camera_handler.js"></script>
 </body>
 
 </html>

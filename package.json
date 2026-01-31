@@ -11,6 +11,11 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "@capacitor/android": "^8.0.2",
+        "@capacitor/camera": "^8.0.0",
+        "@capacitor/cli": "^8.0.2",
+        "@capacitor/core": "^8.0.2",
+        "@ionic/pwa-elements": "^3.3.0",
         "@supabase/supabase-js": "^2.39.0",
         "dotenv": "^16.3.1",
         "imap-simple": "^5.1.0",

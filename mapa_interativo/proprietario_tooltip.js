@@ -202,6 +202,11 @@ window.ProprietarioTooltip = {
         tooltip.backdrop = backdrop;
 
         this.setupHandlers(tooltip, prop);
+
+        // Trigger Context Help
+        if (window.Onboarding && window.Onboarding.checkAndShowContextHelp) {
+            window.Onboarding.checkAndShowContextHelp('owner', '.proprietario-tooltip');
+        }
     },
 
     renderHeader(prop) {
@@ -586,20 +591,80 @@ window.ProprietarioTooltip = {
                 return;
             }
 
-            // Renderizar lista de arquivos
-            let html = '';
+            // Agrupar arquivos por certidão (baseado no prefixo do nome)
+            // Ex: tjsp-segundo-grau_2024-01-30.pdf e .html
+            const groups = {};
+
             files.forEach(file => {
                 if (file.name === '.emptyFolderPlaceholder') return;
 
-                // Extrair nome da certidão do arquivo
-                // Formato: TIPO_DATA_HORA.pdf
-                const parts = file.name.replace('.pdf', '').split('_');
-                const tipoId = parts[0] || 'unknown';
-                const dataStr = parts.length > 1 ? parts.slice(1).join('_') : '';
+                // Tentar identificar o tipo da certidão
+                // Estratégia: O nome começa com o ID da certidão?
+                // IDs: trf-unificada, tjsp-primeiro-grau, etc.
+
+                let certId = 'unknown';
+                let dateStr = '';
+
+                // Iterar sobre configs para ver qual ID casa com o prefixo
+                const knownIds = Object.keys(window.Infosimples?.getCertidoesConfig() || {});
+
+                // Ordenar IDs por tamanho (decrescente) para evitar falso positivo em substring
+                knownIds.sort((a, b) => b.length - a.length);
+
+                for (const id of knownIds) {
+                    if (file.name.startsWith(id)) {
+                        certId = id;
+                        // O resto é data/hora
+                        dateStr = file.name.replace(id, '').replace(/^[_-]/, '').replace(/\.(pdf|html)$/, '');
+                        break;
+                    }
+                }
+
+                // ALIAS / CORREÇÕES DE NOMES
+                // O bot de email salva como "Certidao_Unificada.pdf", mas o ID é "trf-unificada"
+                if (file.name.includes('Certidao_Unificada') || file.name.includes('Certidão_Unificada')) {
+                    certId = 'trf-unificada';
+                }
+
+                // Se não achou pelo ID, usa a lógica antiga de split
+                if (certId === 'unknown') {
+                    const parts = file.name.split('_');
+                    certId = parts[0];
+                    dateStr = parts.slice(1).join('_').replace(/\.(pdf|html)$/, '');
+                }
+
+                if (!groups[certId]) {
+                    groups[certId] = { pdf: null, html: null, latest: null };
+                }
+
+                const isHtml = file.name.toLowerCase().endsWith('.html') || file.metadata?.mimetype === 'text/html';
+
+                // Guardar referência
+                if (isHtml) groups[certId].html = file;
+                else groups[certId].pdf = file;
+
+                // Track latest file per cert type regardless of extension
+                if (!groups[certId].latest || new Date(file.created_at) > new Date(groups[certId].latest.created_at)) {
+                    groups[certId].latest = file;
+                }
+            });
+
+            // Renderizar lista filtrada
+            let html = '';
+
+            Object.keys(groups).forEach(certId => {
+                const group = groups[certId];
+
+                // Prioridade: PDF > HTML
+                // Se tiver PDF, mostra o PDF (Sucesso).
+                // Se só tiver HTML, mostra como "Aguardando" ou "Visualizar Online".
+
+                const fileToUse = group.pdf || group.html;
+                if (!fileToUse) return;
 
                 // Buscar config da certidão
-                const certConfig = window.Infosimples?.getCertidoesConfig()[tipoId] || {
-                    nome: tipoId.replace(/-/g, ' ').toUpperCase(),
+                const certConfig = window.Infosimples?.getCertidoesConfig()[certId] || {
+                    nome: certId.replace(/-/g, ' ').toUpperCase(),
                     icone: 'fa-file-pdf',
                     cor: '#64748b'
                 };
@@ -608,20 +673,45 @@ window.ProprietarioTooltip = {
                 const { data: urlData } = window.supabaseApp
                     .storage
                     .from('certidoes_juridicas')
-                    .getPublicUrl(`${documento}/${file.name}`);
+                    .getPublicUrl(`${documento}/${fileToUse.name}`);
 
                 const publicUrl = urlData?.publicUrl || '#';
 
                 // Formatar data
                 let dataFormatada = '';
-                if (file.created_at) {
-                    dataFormatada = new Date(file.created_at).toLocaleDateString('pt-BR', {
+                if (fileToUse.created_at) {
+                    dataFormatada = new Date(fileToUse.created_at).toLocaleDateString('pt-BR', {
                         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
                     });
                 }
 
-                const isHtml = file.name.toLowerCase().endsWith('.html') || file.metadata?.mimetype === 'text/html';
-                const clickAction = `window.Infosimples.verComprovante('${publicUrl}', ${isHtml})`;
+                const isHtml = group.pdf ? false : true;
+
+                // Lógica de Status Baseada no Tipo e Extensão
+                let statusColor = group.pdf ? '#10b981' : '#3b82f6'; // Verde (PDF) ou Azul (Web)
+                let statusBadge = '';
+                let btnIcon = group.pdf ? 'fa-download' : 'fa-globe';
+                let btnText = group.pdf ? 'Baixar PDF' : 'Visualizar Web';
+
+                // Exceções e Ajustes Específicos
+                if (!group.pdf && isHtml) {
+                    // CENPROT e TRT2 geralmente retornam HTML válido (Nada Consta)
+                    if (certId.includes('cenprot') || certId.includes('trt2') || certId.includes('tjsp')) {
+                        statusColor = '#3b82f6'; // Azul (Info)
+                        statusBadge = '';
+                    }
+                    // TRF Unificada pode ser "Aguardando" ou "Resultados Web"
+                    else if (certId.includes('trf')) {
+                        statusColor = '#f59e0b'; // Amarelo
+                        btnIcon = 'fa-external-link-alt';
+                        btnText = 'Ver Status';
+                        statusBadge = '<span style="font-size: 10px; background: #fffbeb; color: #b45309; padding: 2px 6px; border-radius: 4px; border: 1px solid #fcd34d;">Ver Status</span>';
+                    }
+                    else {
+                        statusColor = '#64748b'; // Cinza
+                    }
+                }
+                let clickAction = `window.Infosimples.verComprovante('${publicUrl}', ${isHtml})`;
 
                 html += `
                     <div style="    
@@ -633,6 +723,7 @@ window.ProprietarioTooltip = {
                         border: 1px solid #e2e8f0;
                         border-left: 4px solid ${certConfig.cor || '#667eea'};
                         border-radius: 8px;
+                        margin-bottom: 8px;
                     ">
                         <i class="fas ${certConfig.icone || 'fa-file-pdf'}" style="
                             font-size: 20px;
@@ -641,15 +732,16 @@ window.ProprietarioTooltip = {
                             text-align: center;
                         "></i>
                         <div style="flex: 1;">
-                            <div style="font-size: 13px; font-weight: 600; color: #1e293b;">
-                                ${certConfig.nome || file.name}
+                            <div style="font-size: 13px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                                ${certConfig.nome || fileToUse.name}
+                                ${statusBadge}
                             </div>
                             <div style="font-size: 11px; color: #64748b;">
                                 ${dataFormatada || 'Data não disponível'}
                             </div>
                         </div>
                         <button onclick="${clickAction}" style="
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            background: linear-gradient(135deg, ${group.pdf ? '#667eea 0%, #764ba2' : (statusColor === '#f59e0b' ? '#f59e0b 0%, #d97706' : '#3b82f6 0%, #2563eb')} 100%);
                             color: white;
                             padding: 8px 14px;
                             border: none;
@@ -662,7 +754,7 @@ window.ProprietarioTooltip = {
                             gap: 6px;
                             cursor: pointer;
                         ">
-                            <i class="fas ${isHtml ? 'fa-eye' : 'fa-download'}"></i> ${isHtml ? 'Abrir' : 'Baixar'}
+                            <i class="fas ${btnIcon}"></i> ${btnText}
                         </button>
                     </div>
                 `;

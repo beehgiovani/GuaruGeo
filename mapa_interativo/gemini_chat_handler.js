@@ -4,42 +4,26 @@
 
 class GeminiChatHandler {
     constructor() {
-
         this.apiKey = "AIzaSyCMDj4RXAJheWLJX61Vbt6WG_M6eQ_nPrE";
 
-        // Model Registry based on User's Dashboard (Valid IDs)
+        // Model Registry
         this.models = {
-            'smart': 'gemini-2.5-flash',      // Using 2.5 as top tier (most stable)
-            'balanced': 'gemini-2.5-flash',   // Standard
-            'fast': 'gemini-2.5-flash-lite'   // Correct Fallback (Lite version)
+            'smart': 'gemini-2.5-flash-lite',
+            'balanced': 'gemini-2.5-flash-lite',
+            'fast': 'gemini-2.5-flash-lite'
         };
 
         // Default Model
-        this.currentModel = this.models.balanced;
+        this.currentModel = this.models.smart;
         this.apiUrl = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
 
-        // Inject Custom Styles for AI Results
+        // Inject Custom Styles if missing
         if (!document.getElementById('ai-chat-styles')) {
-            const style = document.createElement('style');
-            style.id = 'ai-chat-styles';
-            style.innerHTML = `
-                .ai-message-content {
-                    font-family: 'Inter', sans-serif;
-                    line-height: 1.6;
-                    color: #334155;
-                }
-                .ai-message-content h3 { font-size: 14px; font-weight: 700; color: #1e293b; margin-top: 15px; margin-bottom: 8px; }
-                .ai-message-content ul { padding-left: 20px; list-style-type: disc; margin-bottom: 10px; }
-                .ai-message-content li { margin-bottom: 4px; }
-                .ai-message-content strong { color: #0f172a; font-weight: 600; }
-                .ai-message-content img { max-width: 100%; border-radius: 6px; margin: 10px 0; border: 1px solid #e2e8f0; }
-                
-                /* Scrollbar for chat */
-                #farol-messages::-webkit-scrollbar { width: 6px; }
-                #farol-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-                #farol-messages::-webkit-scrollbar-track { background: transparent; }
-            `;
-            document.head.appendChild(style);
+            const link = document.createElement('link');
+            link.id = 'ai-chat-styles';
+            link.rel = 'stylesheet';
+            link.href = 'ai_chat_styles.css';
+            document.head.appendChild(link);
         }
 
         this.container = null;
@@ -47,40 +31,68 @@ class GeminiChatHandler {
         this.messagesDiv = null;
         this.input = null;
         this.typingIndicator = null;
+        this.history = [];
 
-        this.history = []; // Histórico para contexto (opcional, cuidado com tokens)
+        // --- AGENTIC SYSTEM PROMPT ---
+        this.systemPrompt = `
+Você é o "GuaruBot" (Codenome: Farol), a Inteligência Central do Guarujá GeoMap.
+Seu objetivo é ser um Agente de Mercado Imobiliário capaz de CRUZAR DADOS complexos.
 
-        this.systemPrompt = `Você é o "Farol", o Assistente de Inteligência Estratégica da Omega Imóveis no sistema Guarugeo. 
-ESTA É UMA FERRAMENTA INTERNA PARA CORRETORES E GESTORES. Você NUNCA fala com o cliente final.
+PERMISSÃO TOTAL DE DADOS (IMPORTANTE):
+Você TEM ACESSO de leitura às tabelas: 'lotes', 'unidades', 'proprietarios' através das TOOLS.
+NUNCA diga "não consigo acessar o banco de dados". Se precisar de dados, USE AS TOOLS.
 
-Sua missão é ser o motor de produtividade da Omega Imóveis:
-1. ANÁLISE TÉCNICA E GAP: Detecte oportunidades no mercado e sugira abordagens.
-2. MARKETING INSTANTÂNEO: Crie anúncios magnéticos e roteiros de vendas.
-3. SEGURANÇA TOTAL: Redija contratos e realize due diligence preventivo.
-4. ORÁCULO DE DADOS (IMPORTANTE): Você tem acesso total ao banco de dados.
-   - Se o usuário perguntar por "proprietário", "matrícula", "endereço" ou "inscrição" e você NÃO tiver esse dado no contexto, USE O COMANDO DE BUSCA.
-   - FORMATO DO COMANDO: [DB_SEARCH: tipo=VALOR_TIPO, query=VALOR_BUSCA]
-   - Tipos suportados: 'matricula', 'proprietario', 'endereco', 'inscricao'.
-   - Ex: [DB_SEARCH: tipo=matricula, query=12345] ou [DB_SEARCH: tipo=proprietario, query=Joao Silva]
-   - NÃO responda "não sei" sem antes tentar buscar.
+FERRAMENTAS DISPONÍVEIS (Use JSON):
+Para buscar dados, você DEVE gerar um bloco JSON no formato:
+\`\`\`json
+{ "tool": "NOME_DA_TOOL", "args": { ... } }
+\`\`\`
 
-    VISUALIZATION & IMAGES (MANDATORY):
-    - ALWAYS search for images of the building or location using Google Search.
-    - If you find images, EMBED them using Markdown: ![Description](URL).
-    - If you find a Street View or Map link, include it.
-    - Make the response visually rich.
+TOOLS:
+1. "search_properties": Buscar imóveis (unidades/lotes).
+   - Args: 
+     - "query" (string, termos gerais), 
+     - "bairro" (string), 
+     - "quartos_min/max" (int), 
+     - "valor_min/max" (float), 
+     - "area_min/max" (float), 
+     - "tipo" (string: 'Apartamento', 'Casa', 'Terreno', 'Comercial')
 
-AUTONOMIA E PRECISÃO PROFISSIONAL:
-Você atua em um ambiente LEGAL e COMERCIAL de alto nível.
-Se faltarem dados (ex: nº de quartos, vagas), use sua inteligência para INFERIR com base no padrão do edifício ou bairro, mas faça isso com AUTORIDADE E LÓGICA TÉCNICA.
-NUNCA use termos como "eu acho" ou "estimativa grosseira".
-Use formulações como: "Considerando o padrão construtivo deste edifício..." ou "Conforme tipologia padrão da região...".
-Seja CIRÚRGICO. O assunto é sério (Contratos e Vendas). Erros minam a confiança.
+2. "search_owners": Buscar proprietários.
+   - Args: "name" (nome parcial), "doc" (cpf/cnpj parcial)
 
-SUA CAPACIDADE DE ATUALIZAÇÃO:
-Se durante a conversa você identificar dados que precisam ser corrigidos ou atualizados (como metragem, valor venal ou nome), use a tag: [UPDATE_DATA:Campo=Valor]. 
-Exemplo: "Notei que a metragem desta unidade é 85m². [UPDATE_DATA:Metragem=85]"
-Isso gerará um botão de confirmação para o corretor.`;
+3. "get_building_details": Ver detalhes de um prédio específico.
+   - Args: "inscricao_lote" (ou nome parcial do prédio)
+
+4. "list_documents": Listar certidões disponíveis.
+   - Args: "inscricao" (unidade ou lote)
+
+5. "update_property_data": CORRIGIR dados errados no banco.
+   - Args: "table" ('unidades' ou 'lotes'), "id" (inscricao), "field" (coluna), "value" (novo valor)
+   - USE QUANDO: Encontrar discrepância entre o banco (vazio/errado) e a WEB (Google Search).
+   - EXIGÊNCIA: Tenha 100% de certeza (ex: Site da Construtora, Portal Imobiliário confiável).
+
+REGRA DE AUTO-CORREÇÃO (CRÍTICO):
+Se você notar que um imóvel tem dados faltantes (ex: Área=0, Quartos=null) E você encontrar essa informação no Google:
+1. CONFIRME a informação em 2 fontes se possível.
+2. EXECUTE 'update_property_data' IMEDIATAMENTE.
+3. Avise o usuário: "Notei que a área estava 0m², mas encontrei 120m² no site da construtora. Atualizei para você."
+
+REGRA DE INTERAÇÃO (CRUCIAL):
+O usuário espera que você seja PROATIVO. Se a busca no banco ('search_properties') retornar ZERO resultados ou dados errados:
+1. NÃO DESISTA.
+2. Use seu conhecimento web (Google Search) para encontrar os dados reais do edifício/imóvel.
+3. Exemplo: "Não achei no banco, mas pesquisei e vi que o Edifício X tem aptos de 3 dormitórios de 120m²."
+4. Se tiver certeza, USE 'update_property_data' para corrigir o banco e depois mostre o resultado.
+
+5. "generate_contract": GERAR MINUTAS JURÍDICAS.
+   - Args: "type" ('compra_venda', 'autorizacao'), "inscricao" (imóvel), "client_name" (opcional), "client_doc" (opcional), "price" (opcional)
+   - Resposta: Você receberá um LINK para download.
+   - USE QUANDO: O usuário pedir "Faça um contrato", "Gere uma autorização de venda".
+
+PERSONALIDADE:
+Profissional, direto, focado em fechar negócios. Use emojis imobiliários (🏢, 🔑, 📄).
+`;
 
         this.init();
     }
@@ -88,139 +100,90 @@ Isso gerará um botão de confirmação para o corretor.`;
     init() {
         this.createElements();
         this.bindEvents();
-        console.log("🤖 Farol AI Initialized");
+        console.log("🧠 GuaruBot Agent Initialized");
     }
 
     createElements() {
+        // ... (Same UI Code - Keeping it brief for diff) ...
         // Floating Chat Button
         this.trigger = document.createElement('div');
-        this.trigger.id = 'farol-trigger';
-        this.trigger.innerHTML = '<i class="fas fa-robot"></i>';
-        this.trigger.style.cssText = `
-            position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px;
-            background: #0f172a; color: white; border-radius: 50%;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2); cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 24px; z-index: 9999; transition: transform 0.2s;
-        `;
+        this.trigger.id = 'ai-chat-trigger'; // Updated ID to match CSS
+        this.trigger.innerHTML = '<i class="fas fa-brain"></i><div class="ai-pulse"></div>'; // New Icon
         document.body.appendChild(this.trigger);
 
         // Chat Container
         this.container = document.createElement('div');
-        this.container.id = 'farol-chat';
-        this.container.style.cssText = `
-            position: fixed; bottom: 90px; right: 20px; width: 350px; height: 500px;
-            background: white; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            z-index: 9999; display: none; flex-direction: column; overflow: hidden;
-            font-family: 'Inter', sans-serif; border: 1px solid #e2e8f0;
-        `;
+        this.container.id = 'ai-chat-container'; // Updated ID
 
         this.container.innerHTML = `
-            <div style="background: #0f172a; color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-robot"></i>
-                    <div>
-                        <div style="font-weight: 700; font-size: 14px;">Farol AI</div>
-                        <div style="font-size: 10px; opacity: 0.8; display: flex; align-items: center; gap: 4px;">
-                            <span style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%;"></span> Online
-                        </div>
-                    </div>
-                </div>
-                <button id="farol-close" style="background: none; border: none; color: white; cursor: pointer; font-size: 16px;">&times;</button>
+            <div class="ai-chat-header">
+                <h3><i class="fas fa-robot"></i> GuaruBot <span class="ai-status">Beta 2.0</span></h3>
+                <span class="ai-chat-close">&times;</span>
             </div>
             
-            <div id="farol-messages" style="flex: 1; padding: 15px; overflow-y: auto; background: #f8fafc; display: flex; flex-direction: column; gap: 10px;">
-                <div style="background: #e0f2fe; padding: 10px; border-radius: 8px; border-bottom-left-radius: 0; font-size: 13px; color: #334155; align-self: flex-start; max-width: 85%;">
-                    Olá! Sou o Farol, seu assistente estratégico. Como posso ajudar com os imóveis hoje? 🤖
+            <div id="ai-chat-messages">
+                <div class="ai-msg bot">
+                    Olá! Sou o GuaruBot. Posso cruzar dados de proprietários, imóveis e certidões.
+                    <br><br>
+                    <i>Ex: "Busque aptos na Enseada com 3 quartos acima de 1M"</i>
                 </div>
             </div>
 
-            <div style="background: white; padding: 10px; border-top: 1px solid #e2e8f0; display: flex; gap: 8px;">
-                <input type="text" id="farol-input" placeholder="Pergunte sobre um imóvel..." style="flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 20px; outline: none; font-size: 13px;">
-                <button id="farol-send" style="background: #0f172a; color: white; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-paper-plane" style="font-size: 14px;"></i>
-                </button>
+            <div class="ai-chat-input-area">
+                <input type="text" id="ai-chat-input" placeholder="Digite sua busca complexa...">
+                <button class="ai-chat-send"><i class="fas fa-paper-plane"></i></button>
             </div>
         `;
 
         document.body.appendChild(this.container);
 
         // Cache refs
-        this.messagesDiv = this.container.querySelector('#farol-messages');
-        this.input = this.container.querySelector('#farol-input');
+        this.messagesDiv = this.container.querySelector('#ai-chat-messages');
+        this.input = this.container.querySelector('#ai-chat-input');
 
-        // Typing Indicator
+        // Typing
         this.typingIndicator = document.createElement('div');
-        this.typingIndicator.style.cssText = 'padding: 10px; font-size: 12px; color: #64748b; font-style: italic; display: none;';
-        this.typingIndicator.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Farol digitando...';
+        this.typingIndicator.className = 'ai-typing';
+        this.typingIndicator.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Analisando base de dados...';
         this.messagesDiv.appendChild(this.typingIndicator);
     }
 
     bindEvents() {
         this.trigger.onclick = () => this.toggleChat();
-        this.container.querySelector('#farol-close').onclick = () => this.toggleChat();
+        this.container.querySelector('.ai-chat-close').onclick = () => this.toggleChat();
 
-        const sendBtn = this.container.querySelector('#farol-send');
+        const sendBtn = this.container.querySelector('.ai-chat-send');
         sendBtn.onclick = () => this.sendMessage();
 
         this.input.onkeypress = (e) => {
             if (e.key === 'Enter') this.sendMessage();
         };
-
-        // Auto-focus input on open
-        this.trigger.addEventListener('click', () => {
-            if (this.container.style.display !== 'none') {
-                setTimeout(() => this.input.focus(), 100);
-            }
-        });
     }
 
     toggleChat() {
-        const isHidden = this.container.style.display === 'none';
-        this.container.style.display = isHidden ? 'flex' : 'none';
-        if (isHidden) {
-            this.trigger.style.transform = 'scale(0)';
+        const isActive = this.container.classList.contains('active');
+        if (isActive) {
+            this.container.classList.remove('active');
         } else {
-            this.trigger.style.transform = 'scale(1)';
+            this.container.classList.add('active');
+            setTimeout(() => this.input.focus(), 100);
         }
     }
 
-    addMessage(text, sender) {
+    addMessage(text, sender, isHtml = false) {
         const div = document.createElement('div');
-        const isBot = sender === 'bot' || sender === 'bot-system';
+        div.className = `ai-msg ${sender}`;
 
-        div.style.cssText = `
-            max-width: 85%; padding: 10px; border-radius: 8px; font-size: 13px; line-height: 1.5;
-            ${isBot ?
-                'background: #fff; border: 1px solid #e2e8f0; border-bottom-left-radius: 0; align-self: flex-start; color: #334155;' :
-                'background: #0f172a; color: white; border-bottom-right-radius: 0; align-self: flex-end;'}
-        `;
-
-        if (sender === 'bot-system') {
-            div.style.background = '#f0fdf4';
-            div.style.border = '1px solid #bbf7d0';
-            div.style.color = '#166534';
-            div.style.fontStyle = 'italic';
-            div.innerHTML = `<i class="fas fa-cog fa-spin"></i> ${text}`;
-        } else if (isBot) {
-            // Use global parser for markdown support
-            const parsed = window.parseMarkdown ? window.parseMarkdown(text) : text.replace(/\n/g, '<br>');
-            div.innerHTML = `<div class="ai-message-content">${parsed}</div>`;
+        if (isHtml) {
+            div.innerHTML = text; // Trusted HTML from our own formatter
         } else {
-            div.textContent = text;
+            // Basic Markdown Parser for text responses
+            const parsed = window.parseMarkdown ? window.parseMarkdown(text) : text.replace(/\n/g, '<br>');
+            div.innerHTML = parsed;
         }
 
         this.messagesDiv.insertBefore(div, this.typingIndicator);
         this.messagesDiv.scrollTop = this.messagesDiv.scrollHeight;
-    }
-
-    showTyping(show) {
-        this.typingIndicator.style.display = show ? 'block' : 'none';
-        this.messagesDiv.scrollTop = this.messagesDiv.scrollHeight;
-    }
-
-    processLeadData(text) {
-        return text; // Placeholder: In future, extract JSON leads here
     }
 
     async sendMessage() {
@@ -229,188 +192,262 @@ Isso gerará um botão de confirmação para o corretor.`;
 
         this.addMessage(text, 'user');
         this.input.value = '';
-
-        this.showTyping(true);
+        this.typingIndicator.style.display = 'block';
 
         try {
-            // 'ask' agora lida internamente com o loop de [DB_SEARCH]
-            const response = await this.ask(text);
-
-            // Lógica de Extração de Lead
-            const cleanResponse = this.processLeadData(response);
-            this.addMessage(cleanResponse, 'bot');
+            const response = await this.agentLoop(text);
+            this.addMessage(response, 'bot');
         } catch (error) {
-            console.error("Erro Chat IA:", error);
-            this.addMessage("Desculpe, tive um problema na conexão. Pode tentar novamente?", 'bot');
+            console.error("AI Error:", error);
+            this.addMessage("❌ Erro ao processar: " + error.message, 'bot');
         } finally {
-            this.showTyping(false);
+            this.typingIndicator.style.display = 'none';
         }
     }
 
-    async handleDbSearch(commandText) {
-        const match = commandText.match(/\[DB_SEARCH:\s*tipo=(.*?),\s*query=(.*?)\]/);
-        if (!match) return { error: "Comando inválido." };
+    // --- AGENT LOOP (The Brain) ---
+    async agentLoop(userPrompt) {
+        // Clone history and append user message
+        let currentTurnHistory = [...this.history, { role: 'user', parts: [{ text: userPrompt }] }];
+        let finalResponse = "";
+        let maxSteps = 5; // Prevent loops
 
-        const type = match[1].trim();
-        const query = match[2].trim();
+        for (let step = 0; step < maxSteps; step++) {
 
-        console.log(`🔎 Farol DB Search: ${type} = ${query}`);
+            // 1. Call LLM
+            const llmResponse = await this._callGeminiApi(currentTurnHistory);
 
-        try {
-            let data, error;
+            // 2. Check for Tool Calls (JSON Code Blocks)
+            const toolCallMatch = llmResponse.match(/```json\s*({[\s\S]*?"tool"[\s\S]*?})\s*```/);
 
-            if (type === 'matricula') {
-                ({ data, error } = await window.supabaseApp
-                    .from('unidades')
-                    .select('inscricao, matricula, nome_proprietario, endereco_proprietario, area_util, valor_venal, status_venda')
-                    .eq('matricula', query)
-                    .limit(5));
+            if (toolCallMatch) {
+                // IT IS A TOOL CALL
+                try {
+                    const toolData = JSON.parse(toolCallMatch[1]);
+                    console.log(`🔧 Executing Tool: ${toolData.tool}`, toolData.args);
+
+                    this.typingIndicator.innerHTML = `<i class="fas fa-database fa-spin"></i> Executando: ${toolData.tool}...`;
+
+                    // Execute Tool
+                    const toolResult = await this.executeTool(toolData.tool, toolData.args);
+                    console.log(`✅ Tool '${toolData.tool}' finished. Result sample:`, JSON.stringify(toolResult).substring(0, 100) + "...");
+
+                    // Feed result back to LLM
+                    const toolOutputMsg = {
+                        role: 'user', // We roleplay as 'system' outputting data
+                        parts: [{ text: `[TOOL_RESULT]\n${JSON.stringify(toolResult)}\n[/TOOL_RESULT]\n\nAgora analise esses dados e responda ao usuário.` }]
+                    };
+
+                    // Add BOTH the model's tool call AND the result to history
+                    currentTurnHistory.push({ role: 'model', parts: [{ text: llmResponse }] });
+                    currentTurnHistory.push(toolOutputMsg);
+
+                    continue; // Loop again to let LLM interpret data
+
+                } catch (e) {
+                    console.error("Tool Parse Error", e);
+                    return "Erro ao processar comando da IA.";
+                }
+            } else {
+                // FINAL ANSWER
+                finalResponse = llmResponse;
+
+                // Add final response to history
+                currentTurnHistory.push({ role: 'model', parts: [{ text: finalResponse }] });
+
+                // UPDATE GLOBAL HISTORY (Critical for Context)
+                this.history = currentTurnHistory;
+
+                break;
             }
-            else if (type === 'proprietario') {
-                ({ data, error } = await window.supabaseApp
-                    .from('unidades')
-                    .select('inscricao, nome_proprietario, matricula, endereco_proprietario')
-                    .ilike('nome_proprietario', `%${query}%`)
-                    .limit(5));
+        }
+
+        return finalResponse;
+    }
+
+    // --- TOOL EXECUTOR ---
+    async executeTool(toolName, args) {
+        if (toolName === 'search_properties') {
+            let query = window.supabaseApp.from('unidades').select('*, lotes(*)'); // Join with Lotes
+
+            if (args.bairro) query = query.ilike('bairro_unidade', `%${args.bairro}%`);
+
+            if (args.valor_min) query = query.gte('valor_vendavel', args.valor_min);
+            if (args.valor_max) query = query.lte('valor_vendavel', args.valor_max);
+            if (args.quartos_min) query = query.gte('quartos', args.quartos_min);
+            if (args.area_min) query = query.gte('area_util', args.area_min);
+
+            const { data, error } = await query.limit(5);
+
+            if (error) {
+                console.error("❌ Search Properties Error:", error);
+                return { error: error.message };
             }
-            else if (type === 'endereco') {
-                ({ data, error } = await window.supabaseApp
+
+            // FALLBACK LOGIC: If no specific units found, try finding the BUILDINGS (Lotes) in that neighborhood
+            if (!data || data.length === 0) {
+                console.warn("⚠️ No detailed units found. Searching for Buildings in neighborhood...");
+                const { data: lotesData } = await window.supabaseApp
                     .from('lotes')
-                    .select('*, unidades(matricula, nome_proprietario, inscricao)')
-                    .ilike('endereco', `%${query}%`)
-                    .limit(3));
-            }
-            else if (type === 'inscricao') {
-                ({ data, error } = await window.supabaseApp
-                    .from('unidades')
                     .select('*')
-                    .eq('inscricao', query)
-                    .limit(1));
-            }
+                    .ilike('bairro', `%${args.bairro || ''}%`)
+                    .limit(5);
 
-            if (error) throw error;
-
-            if (!data || data.length === 0) return { found: false, message: "Nenhum registro encontrado." };
-            return { found: true, results: data };
-
-        } catch (e) {
-            console.error("DB Search Error:", e);
-            return { error: "Erro técnico ao consultar banco: " + e.message };
-        }
-    }
-
-    async ask(userText, modelType = 'balanced') {
-        const selectedModel = this.models[modelType] || this.models.balanced;
-        console.log(`🧠 Using AI Model: ${selectedModel} for intent: ${modelType}`);
-
-        // 1. Primeira Chamada (Raw)
-        let response = await this._callGeminiApi(userText, selectedModel);
-
-        // 2. Loop de Verificação de Comandos (DB Search)
-        // Permitimos até 2 iterações para evitar loops infinitos
-        let iterations = 0;
-        while (response.includes('[DB_SEARCH:') && iterations < 2) {
-            iterations++;
-            console.log(`🔄 Ciclo AI DB_SEARCH #${iterations}`);
-
-            const dbResult = await this.handleDbSearch(response);
-
-            // Re-submete para a IA com os dados
-            const nextPrompt = `[SISTEMA_DADOS_RETORNO]\n${JSON.stringify(dbResult)}\n[/SISTEMA_DADOS_RETORNO]\n\nCom base nesses dados (ou se não achou nada), responda à pergunta original do usuário/intuito inicial.`;
-            response = await this._callGeminiApi(nextPrompt, selectedModel); // Keep same model for continuity
-        }
-
-        return response;
-    }
-
-    async _callGeminiApi(inputText, modelName) {
-        // Obter contexto da unidade se o tooltip estiver aberto
-        let context = "";
-        if (window.currentTooltip && window.currentLoteForUnit) {
-            const lote = window.currentLoteForUnit;
-            const unit = lote.unidades ? lote.unidades[0] : {};
-
-            // 1. Converter GPS (UTM -> Lat/Lon)
-            let gpsContext = "";
-            if (lote.minx && lote.miny && window.utmToLatLon) {
-                const centerX = (lote.minx + lote.maxx) / 2;
-                const centerY = (lote.miny + lote.maxy) / 2;
-                const latLon = window.utmToLatLon(centerX, centerY);
-                if (latLon) {
-                    gpsContext = `
-                     [DADOS_GEOGRAFICOS_PRECISOS]
-                     - Latitude: ${latLon.lat}
-                     - Longitude: ${latLon.lng}
-                     - Link Maps Visual: https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${latLon.lat},${latLon.lng}
-                     - Google Search Maps Link: https://www.google.com/maps/search/?api=1&query=${latLon.lat},${latLon.lng}
-                     [/DADOS_GEOGRAFICOS_PRECISOS]`;
+                if (lotesData && lotesData.length > 0) {
+                    return {
+                        count: lotesData.length,
+                        results: lotesData,
+                        message: "Não encontrei unidades exatas com esses filtros, mas aqui estão os PRÉDIOS/LOTES nessa região. O usuário pode clicar para ver se há unidades cadastradas manualmente."
+                    };
                 }
             }
 
-            context = `
-            [CONTEXTO_ATUAL]
-            - Unidade: ${unit.inscricao || 'N/A'}
-            - Edifício: ${lote.building_name || 'Desconhecido'}
-            - Endereço: ${lote.endereco || 'N/A'}, ${lote.bairro || 'Guarujá'}
-            ${gpsContext}
-            [/CONTEXTO_ATUAL]
-            
-            INSTRUÇÃO DE IMAGEM: Se você encontrar imagens públicas relevantes deste edifício ou localização na internet, INCLUA os links ou incorpore a imagem markdown se possível.
-            `;
+            console.log(`📊 Found ${data.length} properties for query.`);
+            return { count: data.length, results: data };
         }
 
-        try {
-            const payload = {
-                contents: [{
-                    parts: [{ text: `${this.systemPrompt}\n\n${context}\n\nINPUT: ${inputText}` }]
-                }],
-                // Enable Google Search Grounding for all calls
-                tools: [{ google_search: {} }]
+        if (toolName === 'search_owners') {
+            let query = window.supabaseApp.from('proprietarios').select('*');
+            if (args.name) query = query.ilike('nome_completo', `%${args.name}%`);
+            if (args.doc) query = query.ilike('cpf_cnpj', `%${args.doc}%`);
+
+            const { data, error } = await query.limit(5);
+            return error ? { error: error.message } : data;
+        }
+
+        if (toolName === 'generate_contract') {
+            const { type, inscricao, client_name, client_doc, price } = args;
+
+            // 1. Fetch Property Data
+            const { data: units, error } = await window.supabaseApp
+                .from('unidades')
+                .select('*, lotes(*)')
+                .eq('inscricao', inscricao)
+                .limit(1);
+
+            if (error || !units || units.length === 0) {
+                console.warn("⚠️ Contract Gen: Unit not found for:", inscricao);
+                return { error: "Imóvel não encontrado. Verifique a inscrição." };
+            }
+
+            const unit = units[0];
+            const lote = unit.lotes;
+
+            // 2. Prepare Data Payload
+            const contractData = {
+                owner_name: unit.nome_proprietario || 'Proprietário Desconhecido',
+                owner_doc: unit.cpf_cnpj_proprietario || 'Não informado',
+                owner_address: unit.endereco_proprietario || 'Não informado',
+                client_name: client_name || '',
+                client_doc: client_doc || '',
+                client_address: '',
+                property_address: lote ? lote.endereco : '',
+                property_neighborhood: lote ? lote.bairro : '',
+                building_name: lote ? lote.building_name : '',
+                unit_id: unit.inscricao,
+                matricula: unit.matricula,
+                price: price || unit.valor_vendavel || unit.valor_venal || ''
             };
 
-            const url = this.apiUrl(modelName);
+            // 3. Render Template
+            if (!window.ContractTemplates) return { error: "Módulo de Contratos não carregado." };
 
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s Timeout
+            const htmlContent = window.ContractTemplates.render(type, contractData);
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-                signal: controller.signal
-            });
+            // 4. Create Blob Link
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
 
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.status} ${response.statusText}`);
-            }
-
-            const data = await response.json();
-
-            if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
-                return data.candidates[0].content.parts[0].text;
-            } else {
-                throw new Error("Resposta inválida da API (vazia)");
-            }
-
-        } catch (e) {
-            console.warn(`⚠️ Error with ${modelName}: ${e.message}`);
-
-            // Cascading Fallback Strategy
-            let nextModel = null;
-
-            if (modelName === this.models.smart) nextModel = this.models.balanced;
-            else if (modelName === this.models.balanced) nextModel = this.models.fast;
-
-            if (nextModel) {
-                console.log(`🔄 Falling back to ${nextModel}...`);
-                return this._callGeminiApi(inputText, nextModel);
-            }
-
-            // If we reached here, even the fallback failed
-            throw e;
+            console.log("📜 Contract generated:", `Contrato_${type}_${inscricao}.html`);
+            return {
+                success: true,
+                message: "Contrato gerado com sucesso.",
+                download_link: url,
+                file_name: `Contrato_${type}_${inscricao}.html`
+            };
         }
+
+        return { error: "Tool not found or not implemented yet." };
+    }
+
+
+    async _callGeminiApi(history) {
+        // Construct Payload with Context
+        const activeHistory = history.length > 10 ? history.slice(-10) : history;
+        const messages = JSON.parse(JSON.stringify(activeHistory));
+        if (messages.length > 0) {
+            messages[0].parts[0].text = this.systemPrompt + "\n\n" + messages[0].parts[0].text;
+        }
+
+        const url = this.apiUrl(this.currentModel);
+
+        // Auto-Retry Logic (Exponential Backoff - Hardened)
+        let retries = 0;
+        const maxRetries = 5; // Increased from 3 to 5
+        let delay = 3000; // Start with 3s (was 2s)
+
+        while (retries <= maxRetries) {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: messages,
+                        tools: [{ google_search: {} }]
+                    })
+                });
+
+                if (response.status === 429 || response.status === 503) {
+                    throw new Error(`API Busy (${response.status})`);
+                }
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    // If 400 with 'google_search not supported', fallback to no tools? 
+                    // No, invalid argument usually means config error. 
+                    if (response.status === 400 && errText.includes('google_search')) {
+                        console.warn("⚠️ Google Search Tool not supported by this model variant. Retrying without tools.");
+                        return this._callGeminiApiWithoutTools(messages);
+                    }
+                    throw new Error(`HTTP Error ${response.status}: ${errText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.candidates && data.candidates[0].content) {
+                    return data.candidates[0].content.parts[0].text;
+                } else {
+                    console.error("Gemini API Error Payload", data);
+                    throw new Error("Resposta da API inválida ou bloqueada.");
+                }
+
+            } catch (error) {
+                console.warn(`⚠️ Gemini API Attempt ${retries + 1} failed: ${error.message}`);
+
+                if (retries === maxRetries || !error.message.includes('API Busy')) {
+                    throw error; // Give up
+                }
+
+                // Wait and Retry
+                await new Promise(res => setTimeout(res, delay));
+                delay *= 2; // Exponential backoff (2s -> 4s -> 8s)
+                retries++;
+            }
+        }
+    }
+
+    async _callGeminiApiWithoutTools(messages) {
+        const url = this.apiUrl(this.currentModel);
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: messages })
+        });
+        const data = await response.json();
+        if (data.candidates && data.candidates[0].content) {
+            return data.candidates[0].content.parts[0].text;
+        }
+        throw new Error("Falha no Fallback (Sem Tools).");
     }
 }
 

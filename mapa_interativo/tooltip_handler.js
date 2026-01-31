@@ -242,6 +242,16 @@ function showLotTooltip(lote, x, y) {
         </a>
     ` : '';
 
+    const cameraBtn = `
+        <button onclick="window.CameraHandler.takePhoto('${lote.inscricao}')" 
+           title="Adicionar Foto (Mobile)"
+           style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; padding: 6px 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 11px;"
+           onmouseover="this.style.background='rgba(255,255,255,0.2)'"
+           onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+            <i class="fas fa-camera"></i>
+        </button>
+    `;
+
     // Prepare Amenities (Building View)
     const amenitiesList = [
         { key: 'piscina', label: 'Piscina', icon: '🏊' },
@@ -305,6 +315,7 @@ function showLotTooltip(lote, x, y) {
             </div>
             <div class="header-buttons-wrapper" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
                 ${navigateBtn}
+                ${cameraBtn}
                 ${streetViewBtn}
                 <button onclick="window.editFromTooltip('${lote.inscricao}')"
                     class="tooltip-action-btn"
@@ -331,11 +342,31 @@ function showLotTooltip(lote, x, y) {
     tooltipHTML += (function () {
         const images = (lote.gallery && lote.gallery.length > 0) ? lote.gallery : (lote.image_url ? [lote.image_url] : []);
         if (images.length === 0) return '';
+
+        // Escape quotes to prevent HTML breaking
         const imagesJson = JSON.stringify(images).replace(/"/g, '&quot;');
+
         if (images.length > 1) {
-            return `<div class="thumbnail-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 24px;">${images.slice(0, 5).map((img, i) => `<div style="aspect-ratio: 1; border-radius: 8px; overflow: hidden; position: relative; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" onclick="window.openImageModal(${i}, ${imagesJson})"><img src="${img}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/placeholder.png'">${(i === 4 && images.length > 5) ? `<div style="position: absolute; inset:0; background: rgba(0,0,0,0.6); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">+${images.length - 5}</div>` : ''}</div>`).join('')}</div>`;
+            return `
+            <div class="thumbnail-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 24px;">
+                ${images.slice(0, 5).map((img, i) => `
+                    <div style="aspect-ratio: 1; border-radius: 8px; overflow: hidden; position: relative; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.2s;" 
+                         onmouseover="this.style.transform='scale(1.05)'" 
+                         onmouseout="this.style.transform='scale(1)'"
+                         onclick="window.openImageModal(${i}, ${imagesJson})">
+                        <img src="${img}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/placeholder.png'">
+                        ${(i === 4 && images.length > 5) ? `<div style="position: absolute; inset:0; background: rgba(0,0,0,0.6); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">+${images.length - 5}</div>` : ''}
+                    </div>
+                `).join('')}
+            </div>`;
         } else {
-            return `<div style="margin-bottom: 24px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); aspect-ratio: 16/9; cursor: pointer;" onclick="window.openImageModal(0, ${imagesJson})"><img src="${images[0]}" style="width: 100%; height: 100%; object-fit: cover;"></div>`;
+            return `
+            <div style="margin-bottom: 24px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); aspect-ratio: 16/9; cursor: pointer; transition: transform 0.2s;" 
+                 onmouseover="this.style.transform='scale(1.02)'" 
+                 onmouseout="this.style.transform='scale(1)'"
+                 onclick="window.openImageModal(0, ${imagesJson})">
+                <img src="${images[0]}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/placeholder.png'">
+            </div>`;
         }
     })();
 
@@ -472,6 +503,11 @@ function showLotTooltip(lote, x, y) {
     if (window.tooltipScrollState && window.tooltipScrollState[lote.inscricao]) {
         const body = tooltip.querySelector('.lot-tooltip-body');
         if (body) setTimeout(() => { body.scrollTop = window.tooltipScrollState[lote.inscricao]; }, 0);
+    }
+
+    // Trigger Context Help
+    if (window.Onboarding && window.Onboarding.checkAndShowContextHelp) {
+        window.Onboarding.checkAndShowContextHelp('lot', '.lot-tooltip');
     }
 }
 
@@ -616,6 +652,25 @@ function showUnitTooltip(unit, parentLote, x, y) {
 
             <div style="font-size: 13px; opacity: 0.95; margin-top: 8px; font-weight: 500;">${formatInscricao(unit.inscricao)}</div>
             <div style="font-size: 12px; opacity: 0.85; margin-top: 2px; font-weight: 400;">${parentLote.building_name || 'Edifício'} • ${unit.complemento || 'Unidade Principal'}</div>
+            
+            ${(function () {
+            // Tentar usar imagens da unidade, senao do lote
+            const unitImages = (unit.gallery && unit.gallery.length > 0) ? unit.gallery : (unit.image_url ? [unit.image_url] : []);
+            const loteImages = (parentLote.gallery && parentLote.gallery.length > 0) ? parentLote.gallery : (parentLote.image_url ? [parentLote.image_url] : []);
+
+            // Prioridade: Unidade -> Lote
+            const finalImages = unitImages.length > 0 ? unitImages : loteImages;
+
+            if (finalImages.length > 0) {
+                const imagesJson = JSON.stringify(finalImages).replace(/"/g, '&quot;');
+                return `
+                        <button onclick="window.openImageModal(0, ${imagesJson})" style="margin-top: 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                            <i class="fas fa-camera"></i> Ver Fotos (${finalImages.length})
+                        </button>
+                     `;
+            }
+            return '';
+        })()}
         </div>
 
         <div class="tooltip-tabs" style="padding: 0 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 4px;">
@@ -755,6 +810,11 @@ function showUnitTooltip(unit, parentLote, x, y) {
 
     if (unit.cpf_cnpj && unit.nome_proprietario && !unit.proprietario_id) {
         checkAndConsolidateOwner(unit);
+    }
+
+    // Trigger Context Help
+    if (window.Onboarding && window.Onboarding.checkAndShowContextHelp) {
+        window.Onboarding.checkAndShowContextHelp('unit', '.unit-tooltip');
     }
 }
 

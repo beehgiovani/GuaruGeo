@@ -252,8 +252,12 @@ window.renderNeighborhoods = function () {
     });
 
     // Re-bind zoom/move events to refresh anti-collision
+    // Re-bind zoom/move events to refresh anti-collision
+    if (!window._refreshNeighborhoods) {
+        window._refreshNeighborhoods = () => window.renderNeighborhoods();
+    }
+
     window.map.off('zoomend moveend', window._refreshNeighborhoods);
-    window._refreshNeighborhoods = () => window.renderNeighborhoods();
     window.map.on('zoomend moveend', window._refreshNeighborhoods);
 
     // --- MAP CONTEXT MENU FOR CREATION ---

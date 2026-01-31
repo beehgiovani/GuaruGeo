@@ -23,8 +23,11 @@
 }
 
 .sidebar-logo-container img {
-    max-height: 55px;
-    width: auto;
+    max-width: 85%;
+    max-height: 120px;
+    /* Increased from 60px/80px */
+    object-fit: contain;
+    transition: transform 0.3s ease;
     filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
 }
 
@@ -50,8 +53,16 @@
 
 .header-actions {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     align-items: center;
+    flex-wrap: nowrap;
+    /* Prevent wrapping */
+}
+
+.header-actions button {
+    flex-shrink: 0;
+    /* Prevent shrinking */
+    padding: 0 4px;
 }
 
 .search-box {

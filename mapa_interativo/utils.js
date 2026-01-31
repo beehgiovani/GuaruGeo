@@ -340,6 +340,21 @@ function utmToLatLon(x, y) {
     return { lat, lng: lon };
 }
 
+function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // metres
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) *
+        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+}
+
 function latLonToUtm(lat, lng) {
     const zone = 23;
     const k0 = 0.9996;
@@ -385,6 +400,7 @@ window.getZoneColor = getZoneColor;
 window.ZoneColors = ZoneColors;
 window.utmToLatLon = utmToLatLon;
 window.latLonToUtm = latLonToUtm;
+window.getDistanceFromLatLonInMeters = getDistanceFromLatLonInMeters;
 // Helper: Fetch Full Details on Demand
 window.fetchLotDetails = async function (inscricao) {
     if (!window.allLotes) return null;
@@ -437,13 +453,27 @@ window.closeModal = function (id) {
 };
 
 // --- IMAGE MODAL (LIGHTBOX) ---
-window.openImageModal = function (src) {
-    const modal = document.getElementById('image-modal');
-    const modalImg = document.getElementById('modal-image');
-    if (modal && modalImg) {
-        modalImg.src = src;
-        modal.style.display = 'block';
-        requestAnimationFrame(() => modal.classList.add('active'));
+window.openImageModal = function (srcOrIndex, collection) {
+    if (window.ImageViewer) {
+        // New Style
+        if (Array.isArray(collection)) {
+            window.ImageViewer.open(collection, srcOrIndex);
+        } else if (typeof srcOrIndex === 'string') {
+            // Single image legacy call
+            window.ImageViewer.open([srcOrIndex], 0);
+        } else if (Array.isArray(srcOrIndex)) {
+            // Passed array directly as first arg
+            window.ImageViewer.open(srcOrIndex, 0);
+        }
+    } else {
+        // Fallback (Old Style)
+        const modal = document.getElementById('image-modal');
+        const modalImg = document.getElementById('modal-image');
+        if (modal && modalImg) {
+            modalImg.src = (typeof srcOrIndex === 'string') ? srcOrIndex : (collection ? collection[srcOrIndex] : '');
+            modal.style.display = 'block';
+            requestAnimationFrame(() => modal.classList.add('active'));
+        }
     }
 };
 
