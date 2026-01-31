@@ -44,9 +44,8 @@
             "package.json"
         ],
         "publish": {
-            "provider": "github",
-            "owner": "beehgiovani",
-            "repo": "GuaruGeo"
+            "provider": "generic",
+            "url": "https://mapaguaruja-eb395.web.app/downloads/"
         }
     },
     "repository": {
